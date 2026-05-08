@@ -86,7 +86,6 @@ class BubbleTextRecognizer(
             TranslationLanguage.JA_TO_ZH -> when (
                 settingsStore.loadOcrApiSettings().japaneseLocalOcrEngine
             ) {
-                JapaneseLocalOcrEngine.MANGA_OCR -> engineRegistry.getMangaOcr(logTag)
                 JapaneseLocalOcrEngine.MANGA_OCR_MOBILE -> engineRegistry.getMangaOcrMobile(logTag)
             }
             TranslationLanguage.EN_TO_ZH -> engineRegistry.getEnglishOcr(logTag)
@@ -148,10 +147,6 @@ class BubbleTextRecognizer(
         return when (language) {
             TranslationLanguage.JA_TO_ZH -> {
                 when (settingsStore.loadOcrApiSettings().japaneseLocalOcrEngine) {
-                    JapaneseLocalOcrEngine.MANGA_OCR -> {
-                        val engine = engineRegistry.getMangaOcr(logTag) ?: return ""
-                        engine.recognize(crop).trim()
-                    }
                     JapaneseLocalOcrEngine.MANGA_OCR_MOBILE -> {
                         val engine = engineRegistry.getMangaOcrMobile(logTag) ?: return ""
                         engine.recognize(crop).trim()

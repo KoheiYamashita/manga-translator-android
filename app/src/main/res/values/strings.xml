@@ -188,9 +188,6 @@
     <string name="floating_vl_translate_concurrency_hint">VL 翻译线程数 (1–16)</string>
     <string name="floating_translate_settings_note">留空某一项则使用主设置中的对应配置。</string>
     <string name="ocr_use_local">使用本地 OCR</string>
-    <string name="japanese_local_ocr_engine_hint">日文本地 OCR 引擎</string>
-    <string name="japanese_local_ocr_engine_manga_ocr">MangaOcr（质量更好）</string>
-    <string name="japanese_local_ocr_engine_manga_ocr_mobile">MangaOcr Mobile（更轻量）</string>
     <string name="ocr_api_url_hint">OCR API 地址</string>
     <string name="ocr_api_key_hint">OCR API Key</string>
     <string name="ocr_model_name_hint">OCR 模型名称</string>

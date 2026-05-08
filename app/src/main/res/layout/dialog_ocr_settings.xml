@@ -27,25 +27,6 @@
             android:textAppearance="@style/Widget.MangaTranslator.BodyMuted" />
 
         <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/japanese_local_ocr_engine_layout"
-            style="@style/Widget.MangaTranslator.Input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/japanese_local_ocr_engine_hint"
-            app:endIconMode="dropdown_menu">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/japanese_local_ocr_engine_input"
-                style="@style/Widget.MangaTranslator.DialogEditText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:focusable="false"
-                android:importantForAutofill="no"
-                android:inputType="none" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ocr_api_url_layout"
             style="@style/Widget.MangaTranslator.Input"
             android:layout_width="match_parent"
