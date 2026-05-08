@@ -16,14 +16,12 @@ internal class TranslationPipeline(
         OcrEngineRegistry(context.applicationContext, settingsStore),
     private val bubbleTextRecognizer: BubbleTextRecognizer =
         BubbleTextRecognizer(llmClient, ocrEngineRegistry, settingsStore),
-    private val floatingTranslationCacheStore: FloatingTranslationCacheStore =
-        FloatingTranslationCacheStore(context.applicationContext),
     private val textBubbleTranslationCoordinator: TextBubbleTranslationCoordinator =
         TextBubbleTranslationCoordinator(llmClient = llmClient),
     private val floatingBubbleTranslationCoordinator: FloatingBubbleTranslationCoordinator =
         FloatingBubbleTranslationCoordinator(
             llmClient = llmClient,
-            floatingTranslationCacheStore = floatingTranslationCacheStore,
+            floatingTranslationCacheStore = FloatingTranslationCacheStore(context.applicationContext),
             settingsStore = settingsStore
         ),
     private val pageRegionDetector: PageRegionDetector =
@@ -303,6 +301,7 @@ internal class TranslationPipeline(
                     apiSettings = settingsStore.load(),
                     concurrency = floatingSettings.vlTranslateConcurrency,
                     maxConcurrency = 16,
+                    useCache = false,
                     logTag = "Pipeline"
                 )
                 if (outcome.requiresVlModel || outcome.timedOut) {

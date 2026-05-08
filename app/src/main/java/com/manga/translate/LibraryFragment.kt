@@ -428,7 +428,10 @@ class LibraryFragment : Fragment() {
         binding.folderFullTranslateSwitch.setOnCheckedChangeListener { _, isChecked ->
             currentFolder?.let { folder ->
                 preferencesGateway.setFullTranslateEnabled(folder, isChecked)
-                updateGlossaryProcessingSwitchState(folder)
+                if (isChecked && preferencesGateway.isVlDirectTranslateEnabled(folder)) {
+                    binding.folderVlDirectTranslateSwitch.isChecked = false
+                }
+                updateFolderTranslationSwitchStates(folder)
             }
         }
         binding.folderGlossaryProcessingSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -634,9 +637,9 @@ class LibraryFragment : Fragment() {
         binding.folderFullTranslateSwitch.isChecked = preferencesGateway.isFullTranslateEnabled(folder)
         binding.folderGlossaryProcessingSwitch.isChecked =
             preferencesGateway.isGlossaryProcessingEnabled(folder)
-        updateGlossaryProcessingSwitchState(folder)
         binding.folderVlDirectTranslateSwitch.isChecked =
             preferencesGateway.isVlDirectTranslateEnabled(folder)
+        updateFolderTranslationSwitchStates(folder)
         updateLanguageSettingButton(folder)
         updateReadingModeButton(folder)
         updateFolderContentMode(folder)
@@ -1202,6 +1205,23 @@ class LibraryFragment : Fragment() {
         val enabled = !preferencesGateway.isFullTranslateEnabled(folder)
         binding.folderGlossaryProcessingSwitch.isEnabled = enabled
         binding.folderGlossaryProcessingNote.alpha = if (enabled) 1f else 0.5f
+    }
+
+    private fun updateVlDirectTranslateSwitchState(folder: File) {
+        val enabled = !preferencesGateway.isFullTranslateEnabled(folder)
+        if (!enabled && preferencesGateway.isVlDirectTranslateEnabled(folder)) {
+            preferencesGateway.setVlDirectTranslateEnabled(folder, false)
+            if (binding.folderVlDirectTranslateSwitch.isChecked) {
+                binding.folderVlDirectTranslateSwitch.isChecked = false
+            }
+        }
+        binding.folderVlDirectTranslateSwitch.isEnabled = enabled
+        binding.folderVlDirectTranslateNote.alpha = if (enabled) 1f else 0.5f
+    }
+
+    private fun updateFolderTranslationSwitchStates(folder: File) {
+        updateGlossaryProcessingSwitchState(folder)
+        updateVlDirectTranslateSwitchState(folder)
     }
 
     private fun exportFolder() {

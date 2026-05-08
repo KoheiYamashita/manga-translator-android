@@ -119,6 +119,7 @@ internal class FloatingBubbleTranslationCoordinator(
         apiSettings: ApiSettings = settingsStore.loadResolvedFloatingTranslateApiSettings(),
         concurrency: Int,
         maxConcurrency: Int,
+        useCache: Boolean = true,
         logTag: String = "FloatingOCR"
     ): FloatingBubbleImageTranslateOutcome = coroutineScope {
         val semaphore = Semaphore(concurrency.coerceIn(1, maxConcurrency))
@@ -129,9 +130,15 @@ internal class FloatingBubbleTranslationCoordinator(
                     if (crop == null) {
                         return@withPermit FloatingBubbleImageTranslateTaskResult(bubble = bubble)
                     }
-                    val imageCacheKey = floatingTranslationCacheStore.createImageKey(crop)
-                    val cachedTranslation = floatingTranslationCacheStore.findImageTranslation(imageCacheKey)
-                    if (!cachedTranslation.isNullOrBlank()) {
+                    val imageCacheKey = if (useCache) {
+                        floatingTranslationCacheStore.createImageKey(crop)
+                    } else {
+                        null
+                    }
+                    val cachedTranslation = imageCacheKey?.let {
+                        floatingTranslationCacheStore.findImageTranslation(it)
+                    }
+                    if (useCache && !cachedTranslation.isNullOrBlank()) {
                         AppLogger.log("FloatingCache", "VL cache hit bubble=${bubble.id}")
                         crop.recycleSafely()
                         return@withPermit FloatingBubbleImageTranslateTaskResult(
@@ -162,7 +169,7 @@ internal class FloatingBubbleTranslationCoordinator(
                     } finally {
                         crop.recycleSafely()
                     }
-                    if (translatedText.isNotBlank()) {
+                    if (useCache && translatedText.isNotBlank() && imageCacheKey != null) {
                         floatingTranslationCacheStore.putImageTranslation(imageCacheKey, translatedText)
                     }
                     if (translatedText.isBlank()) {

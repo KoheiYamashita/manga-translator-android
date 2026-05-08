@@ -57,7 +57,6 @@ internal class AppContainer(private val appContext: Context) {
             ocrStore = ocrStore,
             ocrEngineRegistry = ocrEngineRegistry,
             bubbleTextRecognizer = bubbleTextRecognizer,
-            floatingTranslationCacheStore = floatingTranslationCacheStore,
             textBubbleTranslationCoordinator = textBubbleTranslationCoordinator,
             floatingBubbleTranslationCoordinator = createFloatingBubbleTranslationCoordinator()
         )
