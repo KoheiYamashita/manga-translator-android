@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 
 class WebtoonReadingAdapter(
     private val scope: CoroutineScope,
-    private val translationStore: TranslationStore
+    private val loadTranslation: (File) -> TranslationResult?
 ) : RecyclerView.Adapter<WebtoonReadingAdapter.WebtoonPageViewHolder>() {
     data class BoundPageSnapshot(
         val imageFile: File,
@@ -372,7 +372,7 @@ class WebtoonReadingAdapter(
                 val translationDeferred = if (hasCachedTranslation) {
                     null
                 } else {
-                    async(Dispatchers.IO) { translationStore.load(imageFile) }
+                    async(Dispatchers.IO) { loadTranslation(imageFile) }
                 }
                 val decoded = decodedDeferred.await()
                 val bitmap = decoded?.bitmap
@@ -533,7 +533,7 @@ class WebtoonReadingAdapter(
             overlayReloadJob = scope.launch {
                 val imagePath = imageFile.absolutePath
                 val translation = withContext(Dispatchers.IO) {
-                    translationStore.load(imageFile)
+                    loadTranslation(imageFile)
                 }
                 translationCache[imagePath] = translation
                 if (boundPath != imagePath) return@launch

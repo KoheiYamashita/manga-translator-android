@@ -44,7 +44,10 @@ internal class FloatingBubbleTranslationCoordinator(
         var exactCacheHits = 0
         var similarityCacheHits = 0
         for (bubble in translatable) {
-            val cached = floatingTranslationCacheStore.findTextTranslation(bubble.text)
+            val cached = floatingTranslationCacheStore.findTextTranslation(
+                text = bubble.text,
+                language = language
+            )
             if (cached == null) {
                 cacheMisses.add(bubble)
                 continue
@@ -89,7 +92,11 @@ internal class FloatingBubbleTranslationCoordinator(
                 if (bubble.text.isNotBlank()) {
                     translatedMap[bubble.id] = bubble.text
                     val source = cacheMisses.firstOrNull { it.id == bubble.id } ?: continue
-                    floatingTranslationCacheStore.putTextTranslation(source.text, bubble.text)
+                    floatingTranslationCacheStore.putTextTranslation(
+                        text = source.text,
+                        translation = bubble.text,
+                        language = language
+                    )
                 }
             }
             val merged = merge()
@@ -123,6 +130,7 @@ internal class FloatingBubbleTranslationCoordinator(
         logTag: String = "FloatingOCR"
     ): FloatingBubbleImageTranslateOutcome = coroutineScope {
         val semaphore = Semaphore(concurrency.coerceIn(1, maxConcurrency))
+        val language = settingsStore.loadFloatingTranslateApiSettings().language
         val tasks = bubbles.map { bubble ->
             async(Dispatchers.IO) {
                 semaphore.withPermit {
@@ -136,7 +144,7 @@ internal class FloatingBubbleTranslationCoordinator(
                         null
                     }
                     val cachedTranslation = imageCacheKey?.let {
-                        floatingTranslationCacheStore.findImageTranslation(it)
+                        floatingTranslationCacheStore.findImageTranslation(it, language)
                     }
                     if (useCache && !cachedTranslation.isNullOrBlank()) {
                         AppLogger.log("FloatingCache", "VL cache hit bubble=${bubble.id}")
@@ -170,7 +178,11 @@ internal class FloatingBubbleTranslationCoordinator(
                         crop.recycleSafely()
                     }
                     if (useCache && translatedText.isNotBlank() && imageCacheKey != null) {
-                        floatingTranslationCacheStore.putImageTranslation(imageCacheKey, translatedText)
+                        floatingTranslationCacheStore.putImageTranslation(
+                            imageKey = imageCacheKey,
+                            translation = translatedText,
+                            language = language
+                        )
                     }
                     if (translatedText.isBlank()) {
                         return@withPermit FloatingBubbleImageTranslateTaskResult(

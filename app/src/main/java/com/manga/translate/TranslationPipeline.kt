@@ -337,13 +337,27 @@ internal class TranslationPipeline(
         useVlDirectTranslate: Boolean,
         language: TranslationLanguage
     ): Boolean {
+        return loadValidTranslation(
+            imageFile = imageFile,
+            fullTranslate = fullTranslate,
+            useVlDirectTranslate = useVlDirectTranslate,
+            language = language
+        ) != null
+    }
+
+    fun loadValidTranslation(
+        imageFile: File,
+        fullTranslate: Boolean,
+        useVlDirectTranslate: Boolean,
+        language: TranslationLanguage
+    ): TranslationResult? {
         val expected = buildExpectedTranslationMetadata(
             imageFile = imageFile,
             fullTranslate = fullTranslate,
             useVlDirectTranslate = useVlDirectTranslate,
             language = language
         )
-        return store.load(imageFile, expectedMetadata = expected) != null
+        return store.load(imageFile, expectedMetadata = expected)
     }
 
     fun saveResult(imageFile: File, result: TranslationResult): File {

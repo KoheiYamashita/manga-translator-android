@@ -867,7 +867,7 @@ class LibraryFragment : Fragment() {
         val items = images.map { file ->
             ImageItem(
                 file = file,
-                translated = translationStore.translationFileFor(file).exists()
+                translated = isImageTranslated(file, folder)
             )
         }
         imageAdapter.submit(items)
@@ -1396,12 +1396,17 @@ class LibraryFragment : Fragment() {
 
     private fun resolveFolderStatus(folder: File, images: List<File>): FolderStatus {
         if (images.isEmpty()) return FolderStatus.UNTRANSLATED
-        val allTranslated = images.all(::isImageTranslated)
+        val allTranslated = images.all { image -> isImageTranslated(image, folder) }
         return if (allTranslated) FolderStatus.TRANSLATED else FolderStatus.UNTRANSLATED
     }
 
-    private fun isImageTranslated(image: File): Boolean {
-        return translationStore.load(image) != null
+    private fun isImageTranslated(image: File, folder: File): Boolean {
+        return translationPipeline.hasValidTranslation(
+            imageFile = image,
+            fullTranslate = preferencesGateway.isFullTranslateEnabled(folder),
+            useVlDirectTranslate = preferencesGateway.isVlDirectTranslateEnabled(folder),
+            language = preferencesGateway.getTranslationLanguage(folder)
+        )
     }
 
     private fun buildFolderTitle(folder: File): String {

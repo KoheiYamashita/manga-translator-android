@@ -56,8 +56,18 @@ class ReadingFragment : Fragment() {
     private val readingSessionViewModel: ReadingSessionViewModel by activityViewModels()
     private val appContainer by lazy(LazyThreadSafetyMode.NONE) { requireContext().appContainer }
     private val dialogs = LibraryDialogs()
+    private val translationPipeline by lazy(LazyThreadSafetyMode.NONE) {
+        appContainer.createTranslationPipeline()
+    }
     private val translationStore by lazy(LazyThreadSafetyMode.NONE) { appContainer.translationStore }
     private val settingsStore by lazy(LazyThreadSafetyMode.NONE) { appContainer.settingsStore }
+    private val preferencesGateway by lazy(LazyThreadSafetyMode.NONE) {
+        LibraryPreferencesGateway(
+            context = requireContext().applicationContext,
+            prefs = appContainer.libraryPrefs,
+            repository = appContainer.libraryRepository
+        )
+    }
     private val readingProgressStore by lazy(LazyThreadSafetyMode.NONE) {
         appContainer.readingProgressStore
     }
@@ -115,7 +125,10 @@ class ReadingFragment : Fragment() {
         emptyBubbleCoordinator = appContainer.createReadingEmptyBubbleCoordinator()
         webtoonLayoutManager = LockedWebtoonLinearLayoutManager(requireContext())
         webtoonLayoutManager.initialPrefetchItemCount = 3
-        webtoonAdapter = WebtoonReadingAdapter(viewLifecycleOwner.lifecycleScope, translationStore)
+        webtoonAdapter = WebtoonReadingAdapter(
+            scope = viewLifecycleOwner.lifecycleScope,
+            loadTranslation = ::loadValidTranslationForCurrentFolder
+        )
         webtoonAdapter.onLockedBubbleOffsetChanged = offsetChanged@{ bubbleId, offsetX, offsetY ->
             if (!isWebtoonEditSessionActive()) return@offsetChanged
             webtoonEditOffsets[bubbleId] = offsetX to offsetY
@@ -365,7 +378,7 @@ class ReadingFragment : Fragment() {
             val decoded = loadBitmap(imageFile)
             val bitmap = decoded?.bitmap
             val translation = withContext(Dispatchers.IO) {
-                translationStore.load(imageFile)
+                loadValidTranslationForCurrentFolder(imageFile)
             }
             val currentImages = readingSessionViewModel.images.value.orEmpty()
             val currentIndex = readingSessionViewModel.index.value ?: 0
@@ -564,7 +577,7 @@ class ReadingFragment : Fragment() {
         val imageFile = images.getOrNull(index) ?: return false
         val snapshot = webtoonAdapter.findBoundPageSnapshot(imageFile.absolutePath)
         val translation = snapshot?.translation ?: withContext(Dispatchers.IO) {
-            translationStore.load(imageFile)
+            loadValidTranslationForCurrentFolder(imageFile)
         }
         val bounds = readImageBounds(imageFile)
         val width = when {
@@ -1131,9 +1144,7 @@ class ReadingFragment : Fragment() {
         if (start > end) return
         for (index in start..end) {
             val imageFile = images[index]
-            if (translationStore.translationFileFor(imageFile).exists()) {
-                webtoonAdapter.notifyTranslationChanged(imageFile.absolutePath)
-            }
+            webtoonAdapter.notifyTranslationChanged(imageFile.absolutePath)
         }
     }
 
@@ -1213,10 +1224,7 @@ class ReadingFragment : Fragment() {
         if (folderReadingMode == FolderReadingMode.WEBTOON_SCROLL) return
         translationWatchJob?.cancel()
         translationWatchJob = viewLifecycleOwner.lifecycleScope.launch {
-            if (translationStore.translationFileFor(imageFile).exists()) {
-                reloadCurrentImageTranslation(imageFile)
-                return@launch
-            }
+            reloadCurrentImageTranslation(imageFile)
             translationStore.updates.collect { path ->
                 if (path == imageFile.absolutePath) {
                     reloadCurrentImageTranslation(imageFile)
@@ -1229,13 +1237,23 @@ class ReadingFragment : Fragment() {
     private suspend fun reloadCurrentImageTranslation(imageFile: java.io.File) {
         if (currentImageFile?.absolutePath != imageFile.absolutePath) return
         val translation = withContext(Dispatchers.IO) {
-            translationStore.load(imageFile)
+            loadValidTranslationForCurrentFolder(imageFile)
         }
         if (currentImageFile?.absolutePath != imageFile.absolutePath) return
         currentTranslation = translation
         binding.readingImage.post {
             updateOverlay(translation, currentBitmap)
         }
+    }
+
+    private fun loadValidTranslationForCurrentFolder(imageFile: java.io.File): TranslationResult? {
+        val folder = readingSessionViewModel.currentFolder.value ?: return translationStore.load(imageFile)
+        return translationPipeline.loadValidTranslation(
+            imageFile = imageFile,
+            fullTranslate = preferencesGateway.isFullTranslateEnabled(folder),
+            useVlDirectTranslate = preferencesGateway.isVlDirectTranslateEnabled(folder),
+            language = preferencesGateway.getTranslationLanguage(folder)
+        )
     }
 
     private fun persistReadingProgress() {

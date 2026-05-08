@@ -22,8 +22,11 @@ class FloatingTranslationCacheStore(context: Context) {
     }
 
     @Synchronized
-    fun findTextTranslation(text: String): CacheLookupResult? {
-        val exactKey = buildExactTextKey(text)
+    fun findTextTranslation(
+        text: String,
+        language: TranslationLanguage = TranslationLanguage.JA_TO_ZH
+    ): CacheLookupResult? {
+        val exactKey = buildExactTextKey(text, language)
         if (exactKey.isBlank()) return null
         val exact = textEntries[exactKey]
         if (exact != null) {
@@ -54,8 +57,12 @@ class FloatingTranslationCacheStore(context: Context) {
     }
 
     @Synchronized
-    fun putTextTranslation(text: String, translation: String) {
-        val exactKey = buildExactTextKey(text)
+    fun putTextTranslation(
+        text: String,
+        translation: String,
+        language: TranslationLanguage = TranslationLanguage.JA_TO_ZH
+    ) {
+        val exactKey = buildExactTextKey(text, language)
         val normalized = buildSimilarityTextKey(text)
         val value = translation.trim()
         if (exactKey.isBlank() || normalized.isBlank() || value.isBlank()) return
@@ -69,13 +76,20 @@ class FloatingTranslationCacheStore(context: Context) {
     }
 
     @Synchronized
-    fun findImageTranslation(imageKey: String): String? {
-        return imageEntries[imageKey]?.translation
+    fun findImageTranslation(
+        imageKey: String,
+        language: TranslationLanguage = TranslationLanguage.JA_TO_ZH
+    ): String? {
+        return imageEntries[buildImageEntryKey(imageKey, language)]?.translation
     }
 
     @Synchronized
-    fun putImageTranslation(imageKey: String, translation: String) {
-        val key = imageKey.trim()
+    fun putImageTranslation(
+        imageKey: String,
+        translation: String,
+        language: TranslationLanguage = TranslationLanguage.JA_TO_ZH
+    ) {
+        val key = buildImageEntryKey(imageKey, language)
         val value = translation.trim()
         if (key.isBlank() || value.isBlank()) return
         imageEntries[key] = ImageCacheEntry(
@@ -160,9 +174,21 @@ class FloatingTranslationCacheStore(context: Context) {
         }
     }
 
-    private fun buildExactTextKey(text: String): String {
-        return text.trim()
+    private fun buildExactTextKey(text: String, language: TranslationLanguage): String {
+        val normalizedText = text.trim()
             .replace(Regex("\\s+"), " ")
+        if (normalizedText.isBlank()) return ""
+        return buildScopedKey(language, normalizedText)
+    }
+
+    private fun buildImageEntryKey(imageKey: String, language: TranslationLanguage): String {
+        val normalizedKey = imageKey.trim()
+        if (normalizedKey.isBlank()) return ""
+        return buildScopedKey(language, normalizedKey)
+    }
+
+    private fun buildScopedKey(language: TranslationLanguage, rawKey: String): String {
+        return "${language.name}|$rawKey"
     }
 
     private fun buildSimilarityTextKey(text: String): String {
