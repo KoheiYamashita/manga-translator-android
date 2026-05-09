@@ -140,6 +140,9 @@ class TranslationStore {
         if (actual.isManual()) {
             return true
         }
+        if (isLegacyTranslationMetadata(actual)) {
+            return true
+        }
         val allowedProviderIds = expected.providerId
             .split('|')
             .map { it.trim() }
@@ -167,5 +170,13 @@ class TranslationStore {
             providerMatches &&
             actual.apiFormat == expected.apiFormat &&
             actual.ocrCacheMode == expected.ocrCacheMode
+    }
+
+    private fun isLegacyTranslationMetadata(metadata: TranslationMetadata): Boolean {
+        return metadata.mode.isNotBlank() &&
+            (metadata.language.isBlank() ||
+                metadata.promptAsset.isBlank() ||
+                metadata.apiFormat.isBlank() ||
+                (metadata.mode != TranslationMetadata.MODE_VL_DIRECT && metadata.ocrCacheMode.isBlank()))
     }
 }
