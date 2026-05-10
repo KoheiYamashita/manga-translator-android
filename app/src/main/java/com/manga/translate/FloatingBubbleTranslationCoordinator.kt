@@ -1,5 +1,6 @@
 package com.manga.translate
 
+import android.content.Context
 import android.graphics.Bitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -13,6 +14,7 @@ internal class FloatingBubbleTranslationCoordinator(
     private val floatingTranslationCacheStore: FloatingTranslationCacheStore,
     private val settingsStore: SettingsStore
 ) {
+    private val appContext = llmClient.resourceContext()
     private val textBubbleTranslationCoordinator = TextBubbleTranslationCoordinator(
         llmClient = llmClient
     )
@@ -189,6 +191,7 @@ internal class FloatingBubbleTranslationCoordinator(
                             responseException = LlmResponseException(
                                 errorCode = "EMPTY_TRANSLATION_SEGMENT",
                                 responseContent = buildBlankModelResponseMessage(
+                                    context = appContext,
                                     bubbleCount = 1,
                                     mode = "image"
                                 )
@@ -232,10 +235,11 @@ internal class FloatingBubbleTranslationCoordinator(
 }
 
 private fun buildBlankModelResponseMessage(
+    context: Context,
     bubbleCount: Int,
     mode: String
 ): String {
-    return "模型返回空白结果：$mode 模式下有 $bubbleCount 个气泡未返回有效翻译内容。"
+    return context.getString(R.string.model_response_blank_bubbles, mode, bubbleCount)
 }
 
 internal data class FloatingBubbleImageTranslateOutcome(

@@ -423,6 +423,10 @@
     <string name="model_response_failed_title">模型返回異常</string>
     <string name="model_response_failed_message">模型返回有問題的結果，翻譯已終止：
 %1$s</string>
+    <string name="model_response_failed_clear_advanced_params">高級 LLM 參數可能不受目前介面支援。請在「LLM 參數」裡把可選高級參數留空後重試。</string>
+    <string name="model_response_empty_content">模型返回空回應，無法提取有效內容。</string>
+    <string name="model_response_blank_bubbles">模型返回空白結果：%1$s 模式下有 %2$d 個氣泡未返回有效翻譯內容。</string>
+    <string name="error_page_prefix">頁面：</string>
     <string name="translation_continue">重試</string>
     <string name="translation_skip">跳過</string>
     <string name="model_error_attention_message">翻譯已暫停，點此返回應用處理模型錯誤</string>
@@ -463,6 +467,7 @@
     <string name="update_dialog_latest_label">Current Latest</string>
     <string name="update_dialog_latest_header">最新版本 %1$s</string>
     <string name="update_dialog_latest_header_preview">最新預覽版 %1$s</string>
+    <string name="update_dialog_preview_suffix"> [預覽版]</string>
     <string name="update_dialog_history_header">歷史更新</string>
     <string name="update_dialog_tutorial_tip">Tip：偶爾記得去查看教學看看有沒有最新玩法。</string>
     <string name="update_dialog_preview_switch">接受預覽版推送</string>
@@ -488,4 +493,14 @@
     <string name="notification_permission_title">通知權限</string>
     <string name="notification_permission_message">用於顯示翻譯進度通知。</string>
     <string name="notification_permission_denied">未授予通知權限，可能無法顯示翻譯進度。</string>
+    <string name="unnamed_folder">未命名</string>
+    <string name="provider_name_primary">主供應商</string>
+    <string name="provider_name_default">供應商 %1$d</string>
+    <string name="global_progress_export">匯出</string>
+    <string name="global_progress_translate">翻譯</string>
+    <string name="global_progress_glossary">譯名</string>
+    <string name="global_progress_failed">%1$s 失敗</string>
+    <string name="global_progress_done">%1$s 完成</string>
+    <string name="global_progress_in_progress">%1$s中</string>
+    <string name="global_progress_count">%1$s %2$d/%3$d</string>
 </resources>

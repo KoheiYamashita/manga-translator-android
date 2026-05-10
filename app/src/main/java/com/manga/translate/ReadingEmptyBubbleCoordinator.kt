@@ -121,7 +121,7 @@ internal class ReadingEmptyBubbleCoordinator(
                 translationMode = "reading_empty_bubble"
             )
         } catch (e: LlmResponseException) {
-            throw e.withPageName(imageFile.name)
+            throw e.withPageName(appContext, imageFile.name)
         }
     }
 
@@ -141,11 +141,12 @@ internal class ReadingEmptyBubbleCoordinator(
     }
 }
 
-private fun LlmResponseException.withPageName(pageName: String): LlmResponseException {
-    if (responseContent.startsWith("页面：")) return this
+private fun LlmResponseException.withPageName(context: Context, pageName: String): LlmResponseException {
+    val pagePrefix = context.getString(R.string.error_page_prefix)
+    if (responseContent.startsWith(pagePrefix)) return this
     return LlmResponseException(
         errorCode = errorCode,
-        responseContent = "页面：$pageName\n$responseContent",
+        responseContent = "$pagePrefix$pageName\n$responseContent",
         cause = this
     )
 }

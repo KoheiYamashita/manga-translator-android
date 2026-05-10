@@ -380,7 +380,7 @@ class MainActivity : AppCompatActivity() {
             }
             builder.append(entry.versionName)
             if (entry.releaseChannel == ReleaseChannel.PREVIEW) {
-                builder.append(" [预览版]")
+                builder.append(getString(R.string.update_dialog_preview_suffix))
             }
             if (entry.releasedAt.isNotBlank()) {
                 builder.append("  ").append(entry.releasedAt)
@@ -460,11 +460,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildCompactProgressText(state: GlobalTaskProgressState): String {
         val label = when {
-            state.title.contains("导出") -> "导出"
-            else -> "翻译"
+            state.title.contains(getString(R.string.global_progress_export)) ->
+                getString(R.string.global_progress_export)
+            else -> getString(R.string.global_progress_translate)
         }
         if (state.terminal) {
-            return if (state.error) "$label 失败" else "$label 完成"
+            return if (state.error) {
+                getString(R.string.global_progress_failed, label)
+            } else {
+                getString(R.string.global_progress_done, label)
+            }
         }
         val stage = extractStage(state.detail)
         if (stage != null) {
@@ -472,9 +477,9 @@ class MainActivity : AppCompatActivity() {
         }
         val progress = extractProgress(state)
         if (progress != null) {
-            return String.format(Locale.getDefault(), "%s %d/%d", label, progress.first, progress.second)
+            return getString(R.string.global_progress_count, label, progress.first, progress.second)
         }
-        return "$label 中"
+        return getString(R.string.global_progress_in_progress, label)
     }
 
     private fun extractProgress(state: GlobalTaskProgressState): Pair<Int, Int>? {
@@ -492,13 +497,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun extractStage(detail: String): String? {
         return when {
-            detail.contains("预处理") && detail.contains("OCR", ignoreCase = true) -> "预处理 OCR"
-            detail.contains("预处理") && detail.contains("译名") -> "预处理 译名"
-            detail.contains("预处理") -> "预处理中"
-            detail.contains("OCR", ignoreCase = true) -> "OCR中"
-            detail.contains("译名") -> "译名中"
-            detail.contains("导出") -> "导出中"
-            detail.contains("翻译") -> "翻译中"
+            detail.contains(getString(R.string.translation_preparing)) &&
+                detail.contains("OCR", ignoreCase = true) -> getString(R.string.folder_preprocess_stage_ocr)
+            detail.contains(getString(R.string.translation_preparing)) &&
+                detail.contains(getString(R.string.global_progress_glossary)) ->
+                getString(R.string.folder_preprocess_stage_glossary)
+            detail.contains(getString(R.string.translation_preparing)) ->
+                getString(R.string.translation_preparing)
+            detail.contains("OCR", ignoreCase = true) ->
+                getString(R.string.global_progress_in_progress, "OCR")
+            detail.contains(getString(R.string.global_progress_glossary)) ->
+                getString(R.string.global_progress_in_progress, getString(R.string.global_progress_glossary))
+            detail.contains(getString(R.string.global_progress_export)) ->
+                getString(R.string.global_progress_in_progress, getString(R.string.global_progress_export))
+            detail.contains(getString(R.string.global_progress_translate)) ->
+                getString(R.string.global_progress_in_progress, getString(R.string.global_progress_translate))
             else -> null
         }
     }

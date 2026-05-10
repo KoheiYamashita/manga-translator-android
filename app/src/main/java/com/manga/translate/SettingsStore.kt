@@ -114,6 +114,7 @@ data class AiProviderProfilesState(
 )
 
 class SettingsStore(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val aiProviderProfilesFile = File(context.filesDir, AI_PROVIDER_PROFILES_FILE_NAME)
 
@@ -684,7 +685,7 @@ class SettingsStore(context: Context) {
         if (main.isValid()) {
             candidates += WeightedProviderCandidate(
                 providerId = PRIMARY_PROVIDER_ID,
-                displayName = PRIMARY_PROVIDER_DISPLAY_NAME,
+                displayName = appContext.getString(R.string.provider_name_primary),
                 settings = main,
                 weight = PRIMARY_PROVIDER_WEIGHT,
                 isPrimary = true
@@ -1075,7 +1076,7 @@ class SettingsStore(context: Context) {
     }
 
     fun defaultAdditionalProviderName(index: Int): String {
-        return "供应商 ${index + 1}"
+        return appContext.getString(R.string.provider_name_default, index + 1)
     }
 
     private fun readDoubleWithDefault(key: String, defaultValue: Double): Double? {
@@ -1163,7 +1164,6 @@ class SettingsStore(context: Context) {
         private const val KEY_LLM_PRESENCE_PENALTY = "llm_presence_penalty"
         private const val KEY_CUSTOM_REQUEST_PARAMETERS = "custom_request_parameters"
         const val PRIMARY_PROVIDER_WEIGHT = 10
-        const val PRIMARY_PROVIDER_DISPLAY_NAME = "主供应商"
         private const val DEFAULT_LLM_TEMPERATURE = 0.8
         private const val DEFAULT_LLM_TOP_P = 1.0
         private const val DEFAULT_LLM_ENABLE_THINKING = false

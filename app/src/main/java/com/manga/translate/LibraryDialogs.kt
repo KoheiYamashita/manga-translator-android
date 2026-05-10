@@ -268,7 +268,8 @@ internal class LibraryDialogs {
         folders: List<DocumentFile>,
         onPicked: (DocumentFile) -> Unit
     ) {
-        val names = folders.map { it.name ?: "未命名" }.toTypedArray()
+        val unnamed = context.getString(R.string.unnamed_folder)
+        val names = folders.map { it.name ?: unnamed }.toTypedArray()
         AlertDialog.Builder(context)
             .setTitle(R.string.ehviewer_select_folder)
             .setItems(names) { _, index -> onPicked(folders[index]) }
@@ -282,7 +283,8 @@ internal class LibraryDialogs {
         folders: List<DocumentFile>,
         onPicked: (List<DocumentFile>) -> Unit
     ) {
-        val names = folders.map { it.name ?: "未命名" }.toTypedArray()
+        val unnamed = context.getString(R.string.unnamed_folder)
+        val names = folders.map { it.name ?: unnamed }.toTypedArray()
         val checked = BooleanArray(folders.size)
         AlertDialog.Builder(context)
             .setTitle(titleRes)

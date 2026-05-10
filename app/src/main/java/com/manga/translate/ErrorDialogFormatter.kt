@@ -24,7 +24,7 @@ internal object ErrorDialogFormatter {
             "$resolvedDetail\n\n${context.getString(R.string.error_code_with_label, errorCode)}"
         }
         return if (shouldSuggestClearingAdvancedParams(errorCode, detail, resolvedDetail)) {
-            "$message\n\n高级 LLM 参数可能不受当前接口支持。请在“LLM 参数”里把可选高级参数留空后重试。"
+            "$message\n\n${context.getString(R.string.model_response_failed_clear_advanced_params)}"
         } else {
             message
         }

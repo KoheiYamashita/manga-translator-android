@@ -242,7 +242,7 @@ class LlmClient(
                         lastResponseException = LlmResponseException(
                             errorCode = "INVALID_RESPONSE",
                             responseContent = body.ifBlank {
-                                "模型返回空响应，无法提取有效内容。"
+                                appContext.getString(R.string.model_response_empty_content)
                             }
                         )
                     } else if (logModelIo) {
@@ -339,7 +339,7 @@ class LlmClient(
                         lastResponseException = LlmResponseException(
                             errorCode = "INVALID_RESPONSE",
                             responseContent = body.ifBlank {
-                                "模型返回空响应，无法提取有效内容。"
+                                appContext.getString(R.string.model_response_empty_content)
                             }
                         )
                     } else if (logModelIo) {
@@ -1452,6 +1452,8 @@ class LlmClient(
             }
         }
     }
+
+    internal fun resourceContext(): Context = appContext
 }
 
 private data class RetryPolicy(
