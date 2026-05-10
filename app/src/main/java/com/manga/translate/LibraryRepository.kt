@@ -67,7 +67,9 @@ class LibraryRepository(private val context: Context) {
         val images = folder.listFiles { file ->
             file.isFile && isImageFile(file.name)
         }?.toList().orEmpty()
-        return images.sortedBy { it.name.lowercase(Locale.getDefault()) }
+        return images.sortedWith { first, second ->
+            compareFileNamesNaturally(first.name, second.name)
+        }
     }
 
     fun addImages(folder: File, uris: List<Uri>): List<File> {
@@ -311,6 +313,60 @@ class LibraryRepository(private val context: Context) {
             } else {
                 null
             }
+        }
+
+        internal fun compareFileNamesNaturally(first: String, second: String): Int {
+            var firstIndex = 0
+            var secondIndex = 0
+
+            while (firstIndex < first.length && secondIndex < second.length) {
+                val firstChar = first[firstIndex]
+                val secondChar = second[secondIndex]
+                val firstIsDigit = firstChar.isDigit()
+                val secondIsDigit = secondChar.isDigit()
+
+                if (firstIsDigit && secondIsDigit) {
+                    val firstEnd = first.consumeDigits(firstIndex)
+                    val secondEnd = second.consumeDigits(secondIndex)
+                    val numberComparison = compareNumericChunks(
+                        first.substring(firstIndex, firstEnd),
+                        second.substring(secondIndex, secondEnd)
+                    )
+                    if (numberComparison != 0) return numberComparison
+                    firstIndex = firstEnd
+                    secondIndex = secondEnd
+                    continue
+                }
+
+                val charComparison = firstChar.lowercaseChar().compareTo(secondChar.lowercaseChar())
+                if (charComparison != 0) return charComparison
+
+                firstIndex += 1
+                secondIndex += 1
+            }
+
+            return first.length.compareTo(second.length)
+        }
+
+        private fun String.consumeDigits(startIndex: Int): Int {
+            var index = startIndex
+            while (index < length && this[index].isDigit()) {
+                index += 1
+            }
+            return index
+        }
+
+        private fun compareNumericChunks(first: String, second: String): Int {
+            val normalizedFirst = first.trimStart('0').ifEmpty { "0" }
+            val normalizedSecond = second.trimStart('0').ifEmpty { "0" }
+
+            val lengthComparison = normalizedFirst.length.compareTo(normalizedSecond.length)
+            if (lengthComparison != 0) return lengthComparison
+
+            val valueComparison = normalizedFirst.compareTo(normalizedSecond)
+            if (valueComparison != 0) return valueComparison
+
+            return first.length.compareTo(second.length)
         }
     }
 
