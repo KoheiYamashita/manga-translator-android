@@ -299,7 +299,7 @@ internal class TranslationPipeline(
                     retryCount = 3,
                     promptAsset = VL_PROMPT_ASSET,
                     apiSettings = settingsStore.load(),
-                    concurrency = floatingSettings.vlTranslateConcurrency,
+                    concurrency = floatingSettings.ocrConcurrencyLimit,
                     maxConcurrency = 16,
                     useCache = false,
                     logTag = "Pipeline"

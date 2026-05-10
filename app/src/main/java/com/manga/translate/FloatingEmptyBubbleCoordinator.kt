@@ -47,7 +47,7 @@ class FloatingEmptyBubbleCoordinator(
                 retryCount = retryCount,
                 apiSettings = floatingApiSettings,
                 promptAsset = floatVlPromptAsset,
-                concurrency = floatingSettings.vlTranslateConcurrency,
+                concurrency = floatingSettings.ocrConcurrencyLimit,
                 maxVlConcurrency = maxVlConcurrency
             )
             if (outcome.requiresVlModel || outcome.timedOut) {

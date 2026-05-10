@@ -1477,7 +1477,7 @@ class SettingsFragment : Fragment() {
             currentSettings.language
         )
         dialogBinding.floatingVlTranslateConcurrencyInput.setText(
-            formatNumber(currentSettings.vlTranslateConcurrency)
+            formatNumber(currentSettings.ocrConcurrencyLimit)
         )
         dialogBinding.floatingUseVlDirectTranslateSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -1499,9 +1499,9 @@ class SettingsFragment : Fragment() {
                     ?: currentSettings.timeoutSeconds
                 val concurrencyInput =
                     dialogBinding.floatingVlTranslateConcurrencyInput.text?.toString()?.trim()
-                val vlTranslateConcurrency = parseIntInput(concurrencyInput)
+                val ocrConcurrencyLimit = parseIntInput(concurrencyInput)
                     ?.coerceIn(1, 16)
-                    ?: currentSettings.vlTranslateConcurrency
+                    ?: currentSettings.ocrConcurrencyLimit
                 settingsStore.saveFloatingTranslateApiSettings(
                     FloatingTranslateApiSettings(
                         apiUrl = dialogBinding.floatingApiUrlInput.text?.toString()?.trim().orEmpty(),
@@ -1514,7 +1514,7 @@ class SettingsFragment : Fragment() {
                         timeoutSeconds = timeoutSeconds,
                         useVlDirectTranslate =
                             dialogBinding.floatingUseVlDirectTranslateSwitch.isChecked,
-                        vlTranslateConcurrency = vlTranslateConcurrency,
+                        ocrConcurrencyLimit = ocrConcurrencyLimit,
                         proofreadingModeEnabled =
                             dialogBinding.floatingProofreadingModeSwitch.isChecked,
                         autoCloseOnScreenChangeEnabled =

@@ -185,7 +185,7 @@
     <string name="floating_gesture_action_none">无操作</string>
     <string name="floating_gesture_action_swipe_translate">划屏翻译</string>
     <string name="floating_language_hint">悬浮窗翻译语言</string>
-    <string name="floating_vl_translate_concurrency_hint">VL 翻译线程数 (1–16)</string>
+    <string name="floating_ocr_concurrency_hint">悬浮窗 OCR/翻译并发上限 (1–16)</string>
     <string name="floating_translate_settings_note">留空某一项则使用主设置中的对应配置。</string>
     <string name="ocr_use_local">使用本地 OCR</string>
     <string name="ocr_api_url_hint">OCR API 地址</string>

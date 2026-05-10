@@ -37,9 +37,14 @@ import com.manga.translate.di.appContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
@@ -769,7 +774,7 @@ class FloatingBallOverlayService : Service() {
                         retryCount = FLOATING_TRANSLATE_RETRY_COUNT,
                         floatPromptAsset = FLOAT_PROMPT_ASSET,
                         floatVlPromptAsset = FLOAT_VL_PROMPT_ASSET,
-                        maxVlConcurrency = MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
+                        maxVlConcurrency = MAX_FLOATING_TASK_CONCURRENCY
                     )
                 }
                 withContext(Dispatchers.Main) {
@@ -1015,8 +1020,8 @@ class FloatingBallOverlayService : Service() {
                         retryCount = FLOATING_TRANSLATE_RETRY_COUNT,
                         promptAsset = FLOAT_VL_PROMPT_ASSET,
                         apiSettings = floatingApiSettings,
-                        concurrency = floatingSettings.vlTranslateConcurrency,
-                        maxConcurrency = MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
+                        concurrency = floatingSettings.ocrConcurrencyLimit,
+                        maxConcurrency = MAX_FLOATING_TASK_CONCURRENCY
                     )
                 } else {
                     null
@@ -1045,41 +1050,12 @@ class FloatingBallOverlayService : Service() {
                             getString(R.string.floating_progress_recognizing, deduplicatedRects.size)
                         )
                     }
-                    val bubbles = ArrayList<BubbleTranslation>(deduplicatedRects.size)
-                    for ((index, rect) in deduplicatedRects.withIndex()) {
-                        val crop = cropBitmap(bitmap, rect)
-                        if (crop == null) {
-                            bubbles.add(
-                                BubbleTranslation(
-                                    id = index,
-                                    rect = rect,
-                                    text = "",
-                                    source = BubbleSource.TEXT_DETECTOR
-                                )
-                            )
-                            continue
-                        }
-                        val text = try {
-                            recognizeFloatingBubbleText(crop, floatingLanguage)
-                        } catch (e: Exception) {
-                            AppLogger.log(
-                                "FloatingOCR",
-                                "Floating OCR recognize failed language=${floatingLanguage.name}",
-                                e
-                            )
-                            ""
-                        } finally {
-                            crop.recycle()
-                        }
-                        bubbles.add(
-                            BubbleTranslation(
-                                id = index,
-                                rect = rect,
-                                text = text,
-                                source = BubbleSource.TEXT_DETECTOR
-                            )
-                        )
-                    }
+                    val bubbles = recognizeFloatingTextBubbles(
+                        bitmap = bitmap,
+                        rects = deduplicatedRects,
+                        language = floatingLanguage,
+                        concurrency = floatingSettings.ocrConcurrencyLimit
+                    )
                     val mergedBubbles = RectGeometryDeduplicator.mergeShortTextDetectorOcrBubbles(
                         bubbles = bubbles.map { bubble ->
                             OcrBubble(
@@ -1147,7 +1123,7 @@ class FloatingBallOverlayService : Service() {
                             retryCount = FLOATING_TRANSLATE_RETRY_COUNT,
                             floatPromptAsset = FLOAT_PROMPT_ASSET,
                             floatVlPromptAsset = FLOAT_VL_PROMPT_ASSET,
-                            maxVlConcurrency = MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
+                            maxVlConcurrency = MAX_FLOATING_TASK_CONCURRENCY
                         ).let { outcome ->
                             if (outcome.requiresVlModel || outcome.timedOut) {
                                 return@let firstPass
@@ -1231,6 +1207,48 @@ class FloatingBallOverlayService : Service() {
                 }
             }
         }
+    }
+
+    private suspend fun recognizeFloatingTextBubbles(
+        bitmap: Bitmap,
+        rects: List<RectF>,
+        language: TranslationLanguage,
+        concurrency: Int
+    ): List<BubbleTranslation> = coroutineScope {
+        val semaphore = Semaphore(concurrency.coerceIn(1, MAX_FLOATING_TASK_CONCURRENCY))
+        rects.mapIndexed { index, rect ->
+            async(Dispatchers.Default) {
+                semaphore.withPermit {
+                    val crop = cropBitmap(bitmap, rect)
+                    if (crop == null) {
+                        return@withPermit BubbleTranslation(
+                            id = index,
+                            rect = rect,
+                            text = "",
+                            source = BubbleSource.TEXT_DETECTOR
+                        )
+                    }
+                    val text = try {
+                        recognizeFloatingBubbleText(crop, language)
+                    } catch (e: Exception) {
+                        AppLogger.log(
+                            "FloatingOCR",
+                            "Floating OCR recognize failed language=${language.name}",
+                            e
+                        )
+                        ""
+                    } finally {
+                        crop.recycleSafely()
+                    }
+                    BubbleTranslation(
+                        id = index,
+                        rect = rect,
+                        text = text,
+                        source = BubbleSource.TEXT_DETECTOR
+                    )
+                }
+            }
+        }.awaitAll()
     }
 
     private fun showModelErrorDialog(
@@ -1632,7 +1650,7 @@ class FloatingBallOverlayService : Service() {
         private const val FLOAT_VL_PROMPT_ASSET = "prompts/vl_bubble_prompts.json"
         private const val FLOATING_TRANSLATE_RETRY_COUNT = 1
         private const val MODEL_RESPONSE_SILENT_RETRY_COUNT = 3
-        private const val MAX_FLOATING_VL_TRANSLATE_CONCURRENCY = 16
+        private const val MAX_FLOATING_TASK_CONCURRENCY = 16
         private const val AUTO_CLOSE_SCREEN_CHECK_INTERVAL_MS = 900L
         private const val AUTO_CLOSE_CAPTURE_TIMEOUT_MS = 1200L
         private const val AUTO_CLOSE_REFERENCE_WIDTH = 180

@@ -53,7 +53,7 @@ data class FloatingTranslateApiSettings(
     val language: TranslationLanguage,
     val timeoutSeconds: Int,
     val useVlDirectTranslate: Boolean,
-    val vlTranslateConcurrency: Int,
+    val ocrConcurrencyLimit: Int,
     val proofreadingModeEnabled: Boolean,
     val autoCloseOnScreenChangeEnabled: Boolean,
     val singleTapAction: FloatingBallGestureAction,
@@ -150,7 +150,7 @@ class SettingsStore(context: Context) {
                 MAX_FLOATING_API_TIMEOUT_SECONDS
             ),
             useVlDirectTranslate = prefs.getBoolean(KEY_FLOATING_USE_VL_DIRECT_TRANSLATE, false),
-            vlTranslateConcurrency = prefs.getInt(
+            ocrConcurrencyLimit = prefs.getInt(
                 KEY_FLOATING_VL_TRANSLATE_CONCURRENCY,
                 DEFAULT_FLOATING_VL_TRANSLATE_CONCURRENCY
             ).coerceIn(
@@ -194,7 +194,7 @@ class SettingsStore(context: Context) {
     }
 
     fun saveFloatingTranslateApiSettings(settings: FloatingTranslateApiSettings) {
-        val normalizedConcurrency = settings.vlTranslateConcurrency.coerceIn(
+        val normalizedConcurrency = settings.ocrConcurrencyLimit.coerceIn(
             MIN_FLOATING_VL_TRANSLATE_CONCURRENCY,
             MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
         )
@@ -863,8 +863,8 @@ class SettingsStore(context: Context) {
                         profile.floatingTranslateSettings.useVlDirectTranslate
                     )
                     .put(
-                        "vlTranslateConcurrency",
-                        profile.floatingTranslateSettings.vlTranslateConcurrency
+                        "ocrConcurrencyLimit",
+                        profile.floatingTranslateSettings.ocrConcurrencyLimit
                     )
                     .put(
                         "proofreadingModeEnabled",
@@ -988,9 +988,12 @@ class SettingsStore(context: Context) {
                     MAX_FLOATING_API_TIMEOUT_SECONDS
                 ),
                 useVlDirectTranslate = floatingJson.optBoolean("useVlDirectTranslate", false),
-                vlTranslateConcurrency = floatingJson.optInt(
-                    "vlTranslateConcurrency",
+                ocrConcurrencyLimit = floatingJson.optInt(
+                    "ocrConcurrencyLimit",
+                    floatingJson.optInt(
+                        "vlTranslateConcurrency",
                     DEFAULT_FLOATING_VL_TRANSLATE_CONCURRENCY
+                    )
                 ).coerceIn(
                     MIN_FLOATING_VL_TRANSLATE_CONCURRENCY,
                     MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
