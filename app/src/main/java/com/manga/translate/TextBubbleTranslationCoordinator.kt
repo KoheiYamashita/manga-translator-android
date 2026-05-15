@@ -36,11 +36,9 @@ internal class TextBubbleTranslationCoordinator(
 
         fun merge(): List<BubbleTranslation> {
             return bubbles.map { bubble ->
-                if (translatedMap.containsKey(bubble.id)) {
-                    bubble.copy(text = translatedMap[bubble.id].orEmpty())
-                } else {
-                    bubble
-                }
+                translatedMap[bubble.id]?.takeIf { it.isNotBlank() }?.let { translated ->
+                    bubble.copy(text = translated)
+                } ?: bubble
             }
         }
 
