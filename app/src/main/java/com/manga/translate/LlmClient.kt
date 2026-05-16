@@ -166,14 +166,14 @@ class LlmClient(
     }
 
     suspend fun translateImageBubble(
-        image: Bitmap,
+        imageBase64: String,
         promptAsset: String,
         requestTimeoutMs: Int? = null,
         retryCount: Int = RETRY_COUNT,
         apiSettings: ApiSettings? = null
     ): String? = withContext(Dispatchers.IO) {
         requestImageContent(
-            image = image,
+            imageBase64 = imageBase64,
             promptAsset = promptAsset,
             requestTimeoutMs = requestTimeoutMs,
             retryCount = retryCount,
@@ -290,7 +290,7 @@ class LlmClient(
     }
 
     private suspend fun requestImageContent(
-        image: Bitmap,
+        imageBase64: String,
         promptAsset: String,
         requestTimeoutMs: Int? = null,
         retryCount: Int = RETRY_COUNT,
@@ -303,13 +303,13 @@ class LlmClient(
         val payload = buildImageTranslationPayload(
             settings = settings,
             modelName = selectedModel,
-            image = image,
+            imageBase64 = imageBase64,
             promptAsset = promptAsset,
             apiFormat = settings.apiFormat
         )
         val logModelIo = settingsStore.loadModelIoLogging()
         if (logModelIo) {
-            AppLogger.log("LlmClient", "Model input ($promptAsset): $payload")
+            AppLogger.log("LlmClient", "Model input ($promptAsset): ${sanitizeModelIoForLog(payload.toString())}")
             AppLogger.log("LlmClient", "Selected model: $selectedModel")
         }
         val timeoutMs = requestTimeoutMs?.coerceAtLeast(1_000) ?: settingsStore.loadApiTimeoutMs()
@@ -346,7 +346,7 @@ class LlmClient(
                             }
                         )
                     } else if (logModelIo) {
-                        AppLogger.log("LlmClient", "Model output: $content")
+                        AppLogger.log("LlmClient", "Model output: ${sanitizeModelIoForLog(content)}")
                     }
                     content
                 }
@@ -641,7 +641,7 @@ class LlmClient(
     private fun buildImageTranslationPayload(
         settings: ApiSettings,
         modelName: String,
-        image: Bitmap,
+        imageBase64: String,
         promptAsset: String,
         apiFormat: ApiFormat
     ): JSONObject {
@@ -649,22 +649,21 @@ class LlmClient(
             ApiFormat.OPENAI_COMPATIBLE -> buildOpenAiImageTranslationPayload(
                 settings = settings,
                 modelName = modelName,
-                image = image,
+                imageBase64 = imageBase64,
                 promptAsset = promptAsset
             )
-            ApiFormat.GEMINI -> buildGeminiImageTranslationPayload(image, promptAsset)
+            ApiFormat.GEMINI -> buildGeminiImageTranslationPayload(imageBase64, promptAsset)
         }
     }
 
     private fun buildOpenAiImageTranslationPayload(
         settings: ApiSettings,
         modelName: String,
-        image: Bitmap,
+        imageBase64: String,
         promptAsset: String
     ): JSONObject {
         val llmParams = settingsStore.loadLlmParameters()
         val config = getPromptConfig(promptAsset)
-        val imageBase64 = encodeBitmapToBase64(image)
         val messages = JSONArray()
         if (config.systemPrompt.isNotBlank()) {
             messages.put(
@@ -726,7 +725,7 @@ class LlmClient(
     }
 
     private fun buildGeminiImageTranslationPayload(
-        image: Bitmap,
+        imageBase64: String,
         promptAsset: String
     ): JSONObject {
         val config = getPromptConfig(promptAsset)
@@ -739,7 +738,7 @@ class LlmClient(
                 config,
                 buildGeminiUserParts(
                     buildGeminiTextPart(userText),
-                    buildGeminiInlineImagePart(encodeBitmapToBase64(image))
+                    buildGeminiInlineImagePart(imageBase64)
                 )
             )
         )
@@ -822,6 +821,69 @@ class LlmClient(
         val buffer = ByteArrayOutputStream()
         image.compress(Bitmap.CompressFormat.JPEG, 90, buffer)
         return Base64.encodeToString(buffer.toByteArray(), Base64.NO_WRAP)
+    }
+
+    private fun sanitizeModelIoForLog(content: String): String {
+        val sanitizedJson = runCatching {
+            when {
+                content.trimStart().startsWith("{") -> {
+                    when (val sanitized = sanitizeJsonValue(JSONObject(content))) {
+                        is JSONObject -> sanitized.toString()
+                        is JSONArray -> sanitized.toString()
+                        else -> null
+                    }
+                }
+                content.trimStart().startsWith("[") -> {
+                    when (val sanitized = sanitizeJsonValue(JSONArray(content))) {
+                        is JSONObject -> sanitized.toString()
+                        is JSONArray -> sanitized.toString()
+                        else -> null
+                    }
+                }
+                else -> null
+            }
+        }.getOrNull()
+        return sanitizedJson ?: content
+            .replace(Regex("""data:image/[^;]+;base64,[A-Za-z0-9+/=]+"""), "data:image/<base64 omitted>")
+    }
+
+    private fun sanitizeJsonValue(value: Any?): Any? {
+        return when (value) {
+            is JSONObject -> {
+                val sanitized = JSONObject()
+                val keys = value.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val child = value.opt(key)
+                    sanitized.put(key, sanitizeJsonField(key, child))
+                }
+                sanitized
+            }
+            is JSONArray -> {
+                JSONArray().also { array ->
+                    for (i in 0 until value.length()) {
+                        array.put(sanitizeJsonValue(value.opt(i)))
+                    }
+                }
+            }
+            else -> value
+        }
+    }
+
+    private fun sanitizeJsonField(key: String, value: Any?): Any? {
+        val normalizedKey = key.lowercase()
+        return when {
+            normalizedKey == "url" && value is String && value.startsWith("data:image/", ignoreCase = true) -> {
+                "data:image/<base64 omitted>"
+            }
+            normalizedKey == "data" && value is String -> {
+                "<base64 omitted>"
+            }
+            normalizedKey == "image_url" || normalizedKey == "inline_data" || normalizedKey == "inlinedata" -> {
+                sanitizeJsonValue(value)
+            }
+            else -> sanitizeJsonValue(value)
+        }
     }
 
     private fun parseTranslationContent(content: String): LlmTranslationResult {

@@ -103,7 +103,11 @@ class FloatingTranslationCacheStore(context: Context) {
     fun createImageKey(bitmap: Bitmap): String {
         val output = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
-        return sha256Hex(output.toByteArray())
+        return createImageKey(output.toByteArray())
+    }
+
+    fun createImageKey(jpegBytes: ByteArray): String {
+        return sha256Hex(jpegBytes)
     }
 
     @Synchronized

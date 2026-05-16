@@ -55,6 +55,7 @@ data class FloatingTranslateApiSettings(
     val timeoutSeconds: Int,
     val useVlDirectTranslate: Boolean,
     val ocrConcurrencyLimit: Int,
+    val aiApiConcurrencyLimit: Int,
     val proofreadingModeEnabled: Boolean,
     val autoCloseOnScreenChangeEnabled: Boolean,
     val singleTapAction: FloatingBallGestureAction,
@@ -137,6 +138,24 @@ class SettingsStore(context: Context) {
     }
 
     fun loadFloatingTranslateApiSettings(): FloatingTranslateApiSettings {
+        val legacyAiConcurrency = prefs.getInt(
+            KEY_FLOATING_VL_TRANSLATE_CONCURRENCY,
+            DEFAULT_FLOATING_AI_API_CONCURRENCY
+        ).coerceIn(
+            MIN_FLOATING_AI_API_CONCURRENCY,
+            MAX_FLOATING_AI_API_CONCURRENCY
+        )
+        val ocrConcurrency = when {
+            prefs.contains(KEY_FLOATING_OCR_CONCURRENCY) -> prefs.getInt(
+                KEY_FLOATING_OCR_CONCURRENCY,
+                DEFAULT_FLOATING_OCR_CONCURRENCY
+            )
+            prefs.contains(KEY_FLOATING_VL_TRANSLATE_CONCURRENCY) -> legacyAiConcurrency
+            else -> DEFAULT_FLOATING_OCR_CONCURRENCY
+        }.coerceIn(
+            MIN_FLOATING_OCR_CONCURRENCY,
+            MAX_FLOATING_OCR_CONCURRENCY
+        )
         return FloatingTranslateApiSettings(
             apiUrl = prefs.getString(KEY_FLOATING_API_URL, "") ?: "",
             apiKey = prefs.getString(KEY_FLOATING_API_KEY, "") ?: "",
@@ -152,13 +171,8 @@ class SettingsStore(context: Context) {
                 MAX_FLOATING_API_TIMEOUT_SECONDS
             ),
             useVlDirectTranslate = prefs.getBoolean(KEY_FLOATING_USE_VL_DIRECT_TRANSLATE, false),
-            ocrConcurrencyLimit = prefs.getInt(
-                KEY_FLOATING_VL_TRANSLATE_CONCURRENCY,
-                DEFAULT_FLOATING_VL_TRANSLATE_CONCURRENCY
-            ).coerceIn(
-                MIN_FLOATING_VL_TRANSLATE_CONCURRENCY,
-                MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
-            ),
+            ocrConcurrencyLimit = ocrConcurrency,
+            aiApiConcurrencyLimit = legacyAiConcurrency,
             proofreadingModeEnabled = prefs.getBoolean(KEY_FLOATING_PROOFREADING_MODE_ENABLED, false),
             autoCloseOnScreenChangeEnabled = prefs.getBoolean(
                 KEY_FLOATING_AUTO_CLOSE_ON_SCREEN_CHANGE_ENABLED,
@@ -196,9 +210,13 @@ class SettingsStore(context: Context) {
     }
 
     fun saveFloatingTranslateApiSettings(settings: FloatingTranslateApiSettings) {
-        val normalizedConcurrency = settings.ocrConcurrencyLimit.coerceIn(
-            MIN_FLOATING_VL_TRANSLATE_CONCURRENCY,
-            MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
+        val normalizedOcrConcurrency = settings.ocrConcurrencyLimit.coerceIn(
+            MIN_FLOATING_OCR_CONCURRENCY,
+            MAX_FLOATING_OCR_CONCURRENCY
+        )
+        val normalizedAiConcurrency = settings.aiApiConcurrencyLimit.coerceIn(
+            MIN_FLOATING_AI_API_CONCURRENCY,
+            MAX_FLOATING_AI_API_CONCURRENCY
         )
         val normalizedTimeout = settings.timeoutSeconds.coerceIn(
             MIN_FLOATING_API_TIMEOUT_SECONDS,
@@ -211,7 +229,8 @@ class SettingsStore(context: Context) {
                 .putString(KEY_FLOATING_LANGUAGE, settings.language.name)
                 .putInt(KEY_FLOATING_TIMEOUT_SECONDS, normalizedTimeout)
                 .putBoolean(KEY_FLOATING_USE_VL_DIRECT_TRANSLATE, settings.useVlDirectTranslate)
-                .putInt(KEY_FLOATING_VL_TRANSLATE_CONCURRENCY, normalizedConcurrency)
+                .putInt(KEY_FLOATING_OCR_CONCURRENCY, normalizedOcrConcurrency)
+                .putInt(KEY_FLOATING_VL_TRANSLATE_CONCURRENCY, normalizedAiConcurrency)
                 .putBoolean(
                     KEY_FLOATING_PROOFREADING_MODE_ENABLED,
                     settings.proofreadingModeEnabled
@@ -893,6 +912,10 @@ class SettingsStore(context: Context) {
                         profile.floatingTranslateSettings.ocrConcurrencyLimit
                     )
                     .put(
+                        "aiApiConcurrencyLimit",
+                        profile.floatingTranslateSettings.aiApiConcurrencyLimit
+                    )
+                    .put(
                         "proofreadingModeEnabled",
                         profile.floatingTranslateSettings.proofreadingModeEnabled
                     )
@@ -1020,13 +1043,27 @@ class SettingsStore(context: Context) {
                 useVlDirectTranslate = floatingJson.optBoolean("useVlDirectTranslate", false),
                 ocrConcurrencyLimit = floatingJson.optInt(
                     "ocrConcurrencyLimit",
+                    if (floatingJson.has("vlTranslateConcurrency")) {
+                        floatingJson.optInt(
+                            "vlTranslateConcurrency",
+                            DEFAULT_FLOATING_OCR_CONCURRENCY
+                        )
+                    } else {
+                        DEFAULT_FLOATING_OCR_CONCURRENCY
+                    }
+                ).coerceIn(
+                    MIN_FLOATING_OCR_CONCURRENCY,
+                    MAX_FLOATING_OCR_CONCURRENCY
+                ),
+                aiApiConcurrencyLimit = floatingJson.optInt(
+                    "aiApiConcurrencyLimit",
                     floatingJson.optInt(
                         "vlTranslateConcurrency",
-                    DEFAULT_FLOATING_VL_TRANSLATE_CONCURRENCY
+                        DEFAULT_FLOATING_AI_API_CONCURRENCY
                     )
                 ).coerceIn(
-                    MIN_FLOATING_VL_TRANSLATE_CONCURRENCY,
-                    MAX_FLOATING_VL_TRANSLATE_CONCURRENCY
+                    MIN_FLOATING_AI_API_CONCURRENCY,
+                    MAX_FLOATING_AI_API_CONCURRENCY
                 ),
                 proofreadingModeEnabled = floatingJson.optBoolean(
                     "proofreadingModeEnabled",
@@ -1148,6 +1185,7 @@ class SettingsStore(context: Context) {
         private const val KEY_FLOATING_TIMEOUT_SECONDS = "floating_timeout_seconds"
         private const val KEY_FLOATING_USE_VL_DIRECT_TRANSLATE = "floating_use_vl_direct_translate"
         private const val KEY_FLOATING_VL_TRANSLATE_CONCURRENCY = "floating_vl_translate_concurrency"
+        private const val KEY_FLOATING_OCR_CONCURRENCY = "floating_ocr_concurrency"
         private const val KEY_FLOATING_PROOFREADING_MODE_ENABLED =
             "floating_proofreading_mode_enabled"
         private const val KEY_FLOATING_AUTO_CLOSE_ON_SCREEN_CHANGE_ENABLED =
@@ -1212,9 +1250,12 @@ class SettingsStore(context: Context) {
         private const val DEFAULT_OCR_API_CONCURRENCY = 1
         private const val MIN_OCR_API_CONCURRENCY = 1
         private const val MAX_OCR_API_CONCURRENCY = 16
-        private const val DEFAULT_FLOATING_VL_TRANSLATE_CONCURRENCY = 1
-        private const val MIN_FLOATING_VL_TRANSLATE_CONCURRENCY = 1
-        private const val MAX_FLOATING_VL_TRANSLATE_CONCURRENCY = 16
+        private const val DEFAULT_FLOATING_OCR_CONCURRENCY = 1
+        private const val MIN_FLOATING_OCR_CONCURRENCY = 1
+        private const val MAX_FLOATING_OCR_CONCURRENCY = 16
+        private const val DEFAULT_FLOATING_AI_API_CONCURRENCY = 15
+        private const val MIN_FLOATING_AI_API_CONCURRENCY = 1
+        private const val MAX_FLOATING_AI_API_CONCURRENCY = 16
         private val DEFAULT_FLOATING_SINGLE_TAP_ACTION = FloatingBallGestureAction.START_TRANSLATE
         private val DEFAULT_FLOATING_DOUBLE_TAP_ACTION = FloatingBallGestureAction.CLEAR_SCREEN
         private val DEFAULT_FLOATING_LONG_PRESS_ACTION = FloatingBallGestureAction.OPEN_MENU

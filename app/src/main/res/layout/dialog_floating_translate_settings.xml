@@ -186,6 +186,22 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/floating_ai_api_concurrency_layout"
+            style="@style/Widget.MangaTranslator.Input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/floating_ai_api_concurrency_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/floating_ai_api_concurrency_input"
+                style="@style/Widget.MangaTranslator.DialogEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/floating_api_timeout_layout"
             style="@style/Widget.MangaTranslator.Input"
             android:layout_width="match_parent"

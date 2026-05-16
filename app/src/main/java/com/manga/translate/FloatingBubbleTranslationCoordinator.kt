@@ -2,12 +2,14 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import java.io.ByteArrayOutputStream
 
 internal class FloatingBubbleTranslationCoordinator(
     private val llmClient: LlmClient,
@@ -141,7 +143,9 @@ internal class FloatingBubbleTranslationCoordinator(
                         return@withPermit FloatingBubbleImageTranslateTaskResult(bubble = bubble)
                     }
                     val imageCacheKey = if (useCache) {
-                        floatingTranslationCacheStore.createImageKey(crop)
+                        compressBitmapToJpeg(crop, 80)?.let { jpegBytes ->
+                            floatingTranslationCacheStore.createImageKey(jpegBytes)
+                        }
                     } else {
                         null
                     }
@@ -155,9 +159,20 @@ internal class FloatingBubbleTranslationCoordinator(
                             bubble = bubble.withTranslationResult(cachedTranslation)
                         )
                     }
+                    val requestImageBase64 = compressBitmapToJpeg(crop, 90)?.let { jpegBytes ->
+                        Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
+                    } ?: run {
+                        crop.recycleSafely()
+                        return@withPermit FloatingBubbleImageTranslateTaskResult(
+                            responseException = LlmResponseException(
+                                errorCode = "IMAGE_ENCODE_FAILED",
+                                responseContent = "Failed to encode bubble crop as JPEG"
+                            )
+                        )
+                    }
                     val translatedText = try {
                         llmClient.translateImageBubble(
-                            image = crop,
+                            imageBase64 = requestImageBase64,
                             promptAsset = promptAsset,
                             requestTimeoutMs = timeoutMs,
                             retryCount = retryCount,
@@ -254,3 +269,14 @@ private data class FloatingBubbleImageTranslateTaskResult(
     val requiresVlModel: Boolean = false,
     val responseException: LlmResponseException? = null
 )
+
+private fun compressBitmapToJpeg(bitmap: Bitmap, quality: Int): ByteArray? {
+    return runCatching {
+        ByteArrayOutputStream().use { output ->
+            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)) {
+                return null
+            }
+            output.toByteArray()
+        }
+    }.getOrNull()
+}

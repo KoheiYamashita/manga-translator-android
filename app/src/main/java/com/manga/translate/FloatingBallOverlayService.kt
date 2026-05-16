@@ -1012,7 +1012,7 @@ class FloatingBallOverlayService : Service() {
                         retryCount = FLOATING_TRANSLATE_RETRY_COUNT,
                         promptAsset = FLOAT_VL_PROMPT_ASSET,
                         apiSettings = floatingApiSettings,
-                        concurrency = floatingSettings.ocrConcurrencyLimit,
+                        concurrency = floatingSettings.aiApiConcurrencyLimit,
                         maxConcurrency = MAX_FLOATING_TASK_CONCURRENCY
                     )
                 } else {
