@@ -5,7 +5,7 @@ import java.util.Locale
 
 object PromptAssetResolver {
     fun resolve(context: Context, assetName: String): String {
-        if (!shouldUseTraditionalPrompts(context)) return assetName
+        if (!isTraditionalChinese(context)) return assetName
         val candidate = assetName.toTraditionalVariantName()
         if (candidate == assetName) return assetName
         return if (assetExists(context, candidate)) candidate else assetName
@@ -20,7 +20,7 @@ object PromptAssetResolver {
         }
     }
 
-    private fun shouldUseTraditionalPrompts(context: Context): Boolean {
+    fun isTraditionalChinese(context: Context): Boolean {
         val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
         if (!locale.language.equals(Locale.CHINESE.language, ignoreCase = true)) return false
         val script = locale.script.orEmpty()

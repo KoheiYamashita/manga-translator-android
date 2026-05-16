@@ -359,6 +359,10 @@ class SettingsFragment : Fragment() {
             showOcrSettingsDialog()
         }
 
+        binding.translationStyleButton.setOnClickListener {
+            showTranslationStyleDialog()
+        }
+
         binding.floatingTranslateSettingsButton.setOnClickListener {
             showFloatingTranslateSettingsDialog()
         }
@@ -1376,6 +1380,57 @@ class SettingsFragment : Fragment() {
             }
         }
         dialog.show()
+    }
+
+    private fun showTranslationStyleDialog() {
+        val currentStyle = settingsStore.loadTranslationStyle()
+        val padding = (resources.displayMetrics.density * 20).toInt()
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.translation_style_hint)
+            setText(currentStyle)
+            setSelection(text.length)
+            minLines = 3
+            maxLines = 8
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setTextColor(resolveColorAttr(R.attr.dialogTextColor))
+            setHintTextColor(resolveColorAttr(R.attr.dialogHintTextColor))
+        }
+        val noteView = TextView(requireContext()).apply {
+            text = getString(R.string.translation_style_note)
+            setPadding(0, (resources.displayMetrics.density * 8).toInt(), 0, 0)
+            setTextColor(resolveColorAttr(R.attr.dialogHintTextColor))
+            textSize = 12f
+        }
+        val container = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(padding, padding / 2, padding, padding / 2)
+            addView(input, android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+            addView(noteView, android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.translation_style_title)
+            .setView(container)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val style = input.text?.toString()?.trim().orEmpty()
+                settingsStore.saveTranslationStyle(style)
+                AppLogger.log("Settings", "Translation style updated")
+                Toast.makeText(requireContext(), R.string.translation_style_saved, Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton(R.string.translation_style_reset) { _, _ ->
+                settingsStore.saveTranslationStyle("")
+                AppLogger.log("Settings", "Translation style reset to default")
+                Toast.makeText(requireContext(), R.string.translation_style_saved, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun showOcrSettingsDialog() {

@@ -138,6 +138,12 @@
     <string name="custom_request_params_conflict_error">自訂參數不能覆蓋內建欄位：%1$s</string>
     <string name="custom_request_params_saved">自訂請求參數已儲存</string>
     <string name="ocr_settings_button">OCR 設定</string>
+    <string name="translation_style_button">翻譯文風設定</string>
+    <string name="translation_style_title">翻譯文風設定</string>
+    <string name="translation_style_hint">文風描述（將附加到翻譯提示詞中）</string>
+    <string name="translation_style_note">此文字將作為文風指令附加到翻譯提示詞末尾，可用於指定譯文風格、語氣或特殊要求。</string>
+    <string name="translation_style_saved">文風設定已儲存</string>
+    <string name="translation_style_reset">恢復預設</string>
     <string name="ocr_settings_title">OCR 設定</string>
     <string name="floating_translate_settings_button">懸浮窗翻譯設定</string>
     <string name="floating_translate_settings_title">懸浮窗翻譯設定</string>

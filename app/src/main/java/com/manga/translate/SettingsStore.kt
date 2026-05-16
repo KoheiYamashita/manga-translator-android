@@ -556,6 +556,22 @@ class SettingsStore(context: Context) {
             }
     }
 
+    fun loadTranslationStyle(): String {
+        val saved = prefs.getString(KEY_TRANSLATION_STYLE, null)
+        if (!saved.isNullOrBlank()) return saved
+        return if (PromptAssetResolver.isTraditionalChinese(appContext)) {
+            DEFAULT_TRANSLATION_STYLE_HANT
+        } else {
+            DEFAULT_TRANSLATION_STYLE
+        }
+    }
+
+    fun saveTranslationStyle(style: String) {
+        prefs.edit() {
+            putString(KEY_TRANSLATION_STYLE, style.trim())
+        }
+    }
+
     fun loadLinkSource(): LinkSource {
         val saved = prefs.getString(KEY_LINK_SOURCE, LinkSource.GITHUB.prefValue)
         return LinkSource.fromPref(saved)
@@ -1177,10 +1193,15 @@ class SettingsStore(context: Context) {
         private const val KEY_LLM_FREQUENCY_PENALTY = "llm_frequency_penalty"
         private const val KEY_LLM_PRESENCE_PENALTY = "llm_presence_penalty"
         private const val KEY_CUSTOM_REQUEST_PARAMETERS = "custom_request_parameters"
+        private const val KEY_TRANSLATION_STYLE = "translation_style"
         const val PRIMARY_PROVIDER_WEIGHT = 10
         private const val DEFAULT_LLM_TEMPERATURE = 0.8
         private const val DEFAULT_LLM_TOP_P = 1.0
         private const val DEFAULT_LLM_ENABLE_THINKING = false
+        private const val DEFAULT_TRANSLATION_STYLE =
+            "请以普通日漫翻译风格翻译，语言自然流畅，符合中文漫画阅读习惯。"
+        private const val DEFAULT_TRANSLATION_STYLE_HANT =
+            "請以普通日漫翻譯風格翻譯，語言自然流暢，符合中文漫畫閱讀習慣。"
         private const val DEFAULT_API_URL = "https://api.siliconflow.cn/v1"
         private const val DEFAULT_MODEL = "Qwen/Qwen3.5-35B-A3B"
         private const val DEFAULT_OCR_API_URL = "https://api.siliconflow.cn/v1"

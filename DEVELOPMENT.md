@@ -409,7 +409,7 @@ sourceSets["main"].assets.srcDirs("src/main/assets", "../assets")
 多供应商调度相关排查建议：
 - 先确认设置页按钮文案数量是否和已保存的附加供应商条目数一致；这里统计的是已保存条目，不只统计启用项。
 - 再看 `SettingsStore.loadMainTranslationProviderPool()` 返回的候选集，确认主供应商和启用的附加供应商都已进入池子。
-- 如果页面没有按预期重新翻译，优先检查 `TranslationStore.kt` 里的 metadata 判定是否命中了旧缓存。
+- 如果页面没有按预期重新翻译，优先检查 `TranslationStore.kt` 里的 metadata 判定；当前页级翻译缓存不再区分 LLM provider / model / apiFormat，只校验源图指纹、翻译模式、语言、prompt 和 OCR 模式。
 - 如果并发翻译时 glossary 表现异常，优先检查 `FolderTranslationCoordinator.kt` 的快照读取与串行合并逻辑。
 - 如果用户反馈“关闭全文速译后还是会被译名处理拖慢”或“想保留已有译名但不要新增译名”，先检查对应文件夹的 `glossary_processing_enabled_<folder>` 是否已关闭。
 

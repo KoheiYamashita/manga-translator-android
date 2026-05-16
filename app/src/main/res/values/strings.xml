@@ -138,6 +138,12 @@
     <string name="custom_request_params_conflict_error">自定义参数不能覆盖内置字段：%1$s</string>
     <string name="custom_request_params_saved">自定义请求参数已保存</string>
     <string name="ocr_settings_button">OCR 设置</string>
+    <string name="translation_style_button">翻译文风设定</string>
+    <string name="translation_style_title">翻译文风设定</string>
+    <string name="translation_style_hint">文风描述（将附加到翻译提示词中）</string>
+    <string name="translation_style_note">此文字将作为文风指令附加到翻译提示词末尾，可用于指定译文风格、语气或特殊要求。</string>
+    <string name="translation_style_saved">文风设定已保存</string>
+    <string name="translation_style_reset">恢复默认</string>
     <string name="ocr_settings_title">OCR 设置</string>
     <string name="floating_translate_settings_button">悬浮窗翻译设置</string>
     <string name="floating_translate_settings_title">悬浮窗翻译设置</string>

@@ -1329,12 +1329,15 @@ class LlmClient(
 
     private fun getPromptConfig(name: String): LlmPromptConfig {
         val resolvedName = PromptAssetResolver.resolve(appContext, name)
-        return promptCache.getOrPut(resolvedName) { loadPromptConfig(resolvedName) }
+        val style = settingsStore.loadTranslationStyle()
+        val cacheKey = "$resolvedName $style"
+        return promptCache.getOrPut(cacheKey) { loadPromptConfig(resolvedName, style) }
     }
 
-    private fun loadPromptConfig(name: String): LlmPromptConfig {
+    private fun loadPromptConfig(name: String, styleHint: String): LlmPromptConfig {
         val json = JSONObject(readAsset(name))
         val systemPrompt = json.optString("system_prompt")
+            .replace("{{STYLE_HINT}}", styleHint)
         val userPromptPrefix = json.optString("user_prompt_prefix")
         val examplesJson = json.optJSONArray("example_messages") ?: JSONArray()
         val examples = ArrayList<PromptMessage>(examplesJson.length())
