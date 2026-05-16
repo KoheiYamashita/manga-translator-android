@@ -88,7 +88,12 @@ class OcrStore {
             bubbles.put(item)
         }
         json.put("bubbles", bubbles)
-        jsonFile.writeText(json.toString())
+        val tmp = File(jsonFile.parentFile, "${jsonFile.name}.tmp")
+        tmp.writeText(json.toString())
+        if (!tmp.renameTo(jsonFile)) {
+            jsonFile.writeText(tmp.readText())
+            tmp.delete()
+        }
         return jsonFile
     }
 
