@@ -87,13 +87,18 @@ class TranslationStore {
                 }
                 bubbles.add(bubble)
             }
-            TranslationResult(
+            val baseResult = TranslationResult(
                 imageName = json.optString("image", imageFile.name),
                 width = json.optInt("width", 0),
                 height = json.optInt("height", 0),
                 bubbles = bubbles,
                 metadata = metadata
             )
+            if (metadata.status == PageTranslationStatus.UNKNOWN) {
+                baseResult.copy(metadata = metadata.copy(status = baseResult.deriveStatus()))
+            } else {
+                baseResult
+            }
         } catch (e: Exception) {
             AppLogger.log("TranslationStore", "Failed to load ${jsonFile.name}", e)
             null
@@ -103,6 +108,11 @@ class TranslationStore {
     fun save(imageFile: File, result: TranslationResult): File {
         val jsonFile = translationFileFor(imageFile)
         val metadata = normalizeMetadata(imageFile, result.metadata)
+        val persistedStatus = if (metadata.status == PageTranslationStatus.UNKNOWN) {
+            result.deriveStatus()
+        } else {
+            metadata.status
+        }
         val json = JSONObject()
             .put("image", result.imageName)
             .put("width", result.width)
@@ -118,6 +128,7 @@ class TranslationStore {
                 put("apiFormat", metadata.apiFormat)
                 put("ocrCacheMode", metadata.ocrCacheMode)
                 put("version", metadata.version)
+                put("status", persistedStatus.jsonValue)
             })
         val bubbles = JSONArray()
         for (bubble in result.bubbles) {
@@ -162,7 +173,8 @@ class TranslationStore {
             apiFormat = json?.optString("apiFormat").orEmpty(),
             ocrCacheMode = json?.optString("ocrCacheMode").orEmpty(),
             version = json?.let { it.optInt("version", TranslationMetadata.CURRENT_VERSION) }
-                ?: TranslationMetadata.CURRENT_VERSION
+                ?: TranslationMetadata.CURRENT_VERSION,
+            status = PageTranslationStatus.fromJson(json?.optString("status"))
         )
     }
 

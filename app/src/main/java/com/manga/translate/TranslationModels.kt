@@ -15,6 +15,21 @@ enum class BubbleSource(val jsonValue: String) {
     }
 }
 
+enum class PageTranslationStatus(val jsonValue: String) {
+    UNKNOWN(""),
+    SUCCESS("success"),
+    PARTIAL("partial"),
+    SKIPPED("skipped"),
+    FAILED("failed");
+
+    companion object {
+        fun fromJson(value: String?): PageTranslationStatus {
+            if (value.isNullOrBlank()) return UNKNOWN
+            return entries.firstOrNull { it.jsonValue.equals(value, ignoreCase = true) } ?: UNKNOWN
+        }
+    }
+}
+
 data class TranslationMetadata(
     val sourceLastModified: Long = 0L,
     val sourceFileSize: Long = 0L,
@@ -25,7 +40,8 @@ data class TranslationMetadata(
     val providerId: String = "",
     val apiFormat: String = "",
     val ocrCacheMode: String = "",
-    val version: Int = CURRENT_VERSION
+    val version: Int = CURRENT_VERSION,
+    val status: PageTranslationStatus = PageTranslationStatus.UNKNOWN
 ) {
     fun isEmpty(): Boolean {
         return sourceLastModified <= 0L &&
@@ -230,3 +246,15 @@ data class TranslationResult(
     val bubbles: List<BubbleTranslation>,
     val metadata: TranslationMetadata = TranslationMetadata()
 )
+
+fun TranslationResult.deriveStatus(): PageTranslationStatus {
+    if (bubbles.isEmpty()) return PageTranslationStatus.SUCCESS
+    val translated = bubbles.count {
+        it.translationState == BubbleTranslationState.TRANSLATED && it.translatedText.isNotBlank()
+    }
+    return if (translated == bubbles.size) {
+        PageTranslationStatus.SUCCESS
+    } else {
+        PageTranslationStatus.PARTIAL
+    }
+}

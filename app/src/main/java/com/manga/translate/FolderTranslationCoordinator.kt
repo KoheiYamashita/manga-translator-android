@@ -40,7 +40,9 @@ internal class FolderTranslationCoordinator(
     private val translationStore: TranslationStore,
     private val settingsStore: SettingsStore,
     private val llmClient: LlmClient,
-    private val ui: LibraryUiCallbacks
+    private val ui: LibraryUiCallbacks,
+    private val progressStore: TranslationProgressStore = TranslationProgressStore(),
+    private val pendingBubbleRetranslator: PendingBubbleRetranslator? = null
 ) {
     private data class ResumeTranslationTask(
         val folder: File,
@@ -406,6 +408,7 @@ internal class FolderTranslationCoordinator(
                     if (glossary.isNotEmpty()) {
                         glossaryStore.save(folder, glossary)
                     }
+                    finalizeFolderProgress(folder, failed)
                     ui.refreshImages(folder)
                 } catch (e: LlmRequestException) {
                     failed = true
@@ -645,6 +648,7 @@ internal class FolderTranslationCoordinator(
                     if (!failed) {
                         resumableTask = null
                     }
+                    finalizeFolderProgress(folder, failed)
                     ui.refreshImages(folder)
                 } catch (e: LlmRequestException) {
                     AppLogger.log("Library", "Full-page translation aborted", e)
@@ -734,6 +738,7 @@ internal class FolderTranslationCoordinator(
             if (glossary.isNotEmpty()) {
                 glossaryStore.save(task.folder, glossary)
             }
+            finalizeFolderProgress(task.folder, failed)
             if (failed) CollectionTaskResult.FAILED else CollectionTaskResult.SUCCESS
         } catch (e: LlmRequestException) {
             AppLogger.log("Library", "Collection translation aborted for ${task.folder.name}", e)
@@ -847,6 +852,7 @@ internal class FolderTranslationCoordinator(
                     )
                 }
             )
+            finalizeFolderProgress(task.folder, failed)
             if (failed) CollectionTaskResult.FAILED else CollectionTaskResult.SUCCESS
         } catch (e: LlmRequestException) {
             AppLogger.log("Library", "Collection full translation aborted for ${task.folder.name}", e)
@@ -946,6 +952,8 @@ internal class FolderTranslationCoordinator(
                     semaphore.withPermit {
                         currentCoroutineContext().ensureActive()
                         if (requestFailed.get()) return@withPermit
+                        progressStore.update(folder, image.name, PageProgressStatus.PENDING)
+                        var failureMessage: String? = null
                         val execution = try {
                             if (useVlDirectTranslate) {
                                 executeVlPageTranslation(image, language)
@@ -965,21 +973,39 @@ internal class FolderTranslationCoordinator(
                             requestFailed.set(true)
                             requestException.compareAndSet(null, e)
                             AppLogger.log("Library", "Translation aborted for ${image.name}", e)
+                            failureMessage = e.message
                             null
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             AppLogger.log("Library", "Translation failed for ${image.name}", e)
+                            failureMessage = e.message
                             null
                         }
-                        if (requestFailed.get()) return@withPermit
+                        if (requestFailed.get()) {
+                            recordPageFailure(folder, image, failureMessage)
+                            return@withPermit
+                        }
                         if (execution?.result != null) {
                             translationPipeline.saveResult(image, execution.result)
+                            val savedStatus = execution.result.metadata.status
+                            progressStore.update(
+                                folder,
+                                image.name,
+                                if (savedStatus == PageTranslationStatus.SKIPPED) {
+                                    PageProgressStatus.SKIPPED
+                                } else {
+                                    PageProgressStatus.SAVED
+                                }
+                            )
                             translatedCount.incrementAndGet()
                         } else if (execution?.recoveredFromModelError == true) {
+                            // Skip path persisted SKIPPED metadata in skipStandardImage; mark progress.
+                            progressStore.update(folder, image.name, PageProgressStatus.SKIPPED)
                             translatedCount.incrementAndGet()
                         } else {
                             hasFailures.set(true)
+                            recordPageFailure(folder, image, failureMessage)
                         }
                         onCountUpdated(translatedCount.get())
                     }
@@ -1013,6 +1039,8 @@ internal class FolderTranslationCoordinator(
                     semaphore.withPermit {
                         currentCoroutineContext().ensureActive()
                         if (requestFailed.get()) return@withPermit
+                        progressStore.update(folder, page.imageFile.name, PageProgressStatus.PENDING)
+                        var failureMessage: String? = null
                         val execution = try {
                             executeFullPageTranslation(
                                 folder = folder,
@@ -1027,21 +1055,38 @@ internal class FolderTranslationCoordinator(
                             requestFailed.set(true)
                             requestException.compareAndSet(null, e)
                             AppLogger.log("Library", "Full-page translation aborted for ${page.imageFile.name}", e)
+                            failureMessage = e.message
                             null
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             AppLogger.log("Library", "Full-page translation failed for ${page.imageFile.name}", e)
+                            failureMessage = e.message
                             null
                         }
-                        if (requestFailed.get()) return@withPermit
+                        if (requestFailed.get()) {
+                            recordPageFailure(folder, page.imageFile, failureMessage)
+                            return@withPermit
+                        }
                         if (execution?.result != null) {
                             translationPipeline.saveResult(page.imageFile, execution.result)
+                            val savedStatus = execution.result.metadata.status
+                            progressStore.update(
+                                folder,
+                                page.imageFile.name,
+                                if (savedStatus == PageTranslationStatus.SKIPPED) {
+                                    PageProgressStatus.SKIPPED
+                                } else {
+                                    PageProgressStatus.SAVED
+                                }
+                            )
                             translatedCount.incrementAndGet()
                         } else if (execution?.recoveredFromModelError == true) {
+                            progressStore.update(folder, page.imageFile.name, PageProgressStatus.SKIPPED)
                             translatedCount.incrementAndGet()
                         } else {
                             hasFailures.set(true)
+                            recordPageFailure(folder, page.imageFile, failureMessage)
                         }
                         onCountUpdated(translatedCount.get())
                     }
@@ -1051,6 +1096,40 @@ internal class FolderTranslationCoordinator(
         }
         requestException.get()?.let { throw it }
         return hasFailures.get()
+    }
+
+    private suspend fun recordPageFailure(folder: File, image: File, errorMessage: String?) {
+        progressStore.update(folder, image.name, PageProgressStatus.FAILED, errorMessage)
+        val existing = translationPipeline.loadAnyTranslation(image)
+        if (existing != null && existing.metadata.status == PageTranslationStatus.SUCCESS) {
+            return
+        }
+        if (existing != null && existing.metadata.isManual()) {
+            return
+        }
+        if (existing == null) {
+            // No prior translation file; progress.json alone records the failure.
+            return
+        }
+        val placeholder = existing.copy(
+            metadata = existing.metadata.copy(status = PageTranslationStatus.FAILED)
+        )
+        try {
+            translationPipeline.saveResult(image, placeholder)
+        } catch (e: Exception) {
+            AppLogger.log("Library", "Failed to record FAILED status for ${image.name}", e)
+        }
+    }
+
+    private suspend fun finalizeFolderProgress(folder: File, failed: Boolean) {
+        if (failed) return
+        val progress = progressStore.load(folder)
+        val keep = progress.values.any {
+            it.status == PageProgressStatus.SKIPPED || it.status == PageProgressStatus.FAILED
+        }
+        if (!keep) {
+            progressStore.clear(folder)
+        }
     }
 
     private suspend fun executeStandardPageTranslation(
@@ -1066,6 +1145,18 @@ internal class FolderTranslationCoordinator(
         val orderedProviders = scheduler.orderedCandidatesForPage()
         if (orderedProviders.isEmpty()) {
             throw LlmRequestException("MISSING_API_SETTINGS", "No configured translation provider")
+        }
+        if (!force) {
+            tryRefillPartial(
+                folder = folder,
+                image = image,
+                language = language,
+                promptAsset = STANDARD_PROMPT_ASSET,
+                translationMode = "standard",
+                glossary = glossary,
+                glossaryMutex = glossaryMutex,
+                glossaryProcessingEnabled = glossaryProcessingEnabled
+            )?.let { return it }
         }
         var lastResponseException: LlmResponseException? = null
         var lastRequestException: LlmRequestException? = null
@@ -1152,6 +1243,16 @@ internal class FolderTranslationCoordinator(
         if (orderedProviders.isEmpty()) {
             throw LlmRequestException("MISSING_API_SETTINGS", "No configured translation provider")
         }
+        tryRefillPartial(
+            folder = folder,
+            image = page.imageFile,
+            language = language,
+            promptAsset = promptAsset,
+            translationMode = "full_page",
+            glossary = glossary,
+            glossaryMutex = glossaryMutex,
+            glossaryProcessingEnabled = true
+        )?.let { return it }
         var lastResponseException: LlmResponseException? = null
         var lastRequestException: LlmRequestException? = null
         orderedProviders.forEach { providerContext ->
@@ -1235,6 +1336,51 @@ internal class FolderTranslationCoordinator(
         }
     }
 
+    private suspend fun tryRefillPartial(
+        folder: File,
+        image: File,
+        language: TranslationLanguage,
+        promptAsset: String,
+        translationMode: String,
+        glossary: MutableMap<String, String>,
+        glossaryMutex: Mutex,
+        glossaryProcessingEnabled: Boolean
+    ): PageTranslationExecutionResult? {
+        val retranslator = pendingBubbleRetranslator ?: return null
+        val existing = translationPipeline.loadAnyTranslation(image) ?: return null
+        if (existing.metadata.status != PageTranslationStatus.PARTIAL) return null
+        if (!existing.metadata.matchesSource(image)) return null
+        val glossarySnapshot = glossaryMutex.withLock { LinkedHashMap(glossary) }
+        val outcome = try {
+            retranslator.refill(
+                imageFile = image,
+                baseTranslation = existing,
+                glossary = glossarySnapshot,
+                language = language,
+                promptAsset = promptAsset,
+                translationMode = translationMode,
+                logTag = "Library",
+                discardShortOcr = false
+            )
+        } catch (e: LlmResponseException) {
+            AppLogger.log("Library", "Partial refill rejected for ${image.name}", e)
+            return null
+        } catch (e: LlmRequestException) {
+            throw e
+        } ?: return null
+
+        val glossaryUsed: Map<String, String> =
+            if (glossaryProcessingEnabled) outcome.glossaryUsed else emptyMap()
+        if (glossaryProcessingEnabled && glossaryUsed.isNotEmpty()) {
+            mergeGlossary(glossary, glossaryUsed, glossaryMutex, folder)
+        }
+        AppLogger.log("Library", "Partial refill applied for ${image.name}")
+        return PageTranslationExecutionResult(
+            result = outcome.translation,
+            glossaryUsed = glossaryUsed
+        )
+    }
+
     private suspend fun mergeGlossary(
         glossary: MutableMap<String, String>,
         additions: Map<String, String>,
@@ -1269,7 +1415,10 @@ internal class FolderTranslationCoordinator(
             forceOcr = force,
             language = language
         ) ?: return
-        translationPipeline.saveResult(image, blank)
+        val skipped = blank.copy(
+            metadata = blank.metadata.copy(status = PageTranslationStatus.SKIPPED)
+        )
+        translationPipeline.saveResult(image, skipped)
         withContext(Dispatchers.Main) {
             ui.refreshImages(folder)
         }
@@ -1372,7 +1521,10 @@ internal class FolderTranslationCoordinator(
             promptAsset = promptAsset,
             language = language
         )
-        translationPipeline.saveResult(page.imageFile, blank)
+        val skipped = blank.copy(
+            metadata = blank.metadata.copy(status = PageTranslationStatus.SKIPPED)
+        )
+        translationPipeline.saveResult(page.imageFile, skipped)
         withContext(Dispatchers.Main) {
             ui.refreshImages(folder)
         }
@@ -1449,5 +1601,6 @@ internal class FolderTranslationCoordinator(
 
     private companion object {
         private const val USER_CANCELED_REASON = "user_canceled_translation"
+        private const val STANDARD_PROMPT_ASSET = "prompts/llm_prompts.json"
     }
 }

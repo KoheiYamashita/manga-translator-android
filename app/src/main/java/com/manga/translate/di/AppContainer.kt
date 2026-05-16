@@ -13,11 +13,13 @@ import com.manga.translate.LibraryUiCallbacks
 import com.manga.translate.LlmClient
 import com.manga.translate.MangaTranslateApp
 import com.manga.translate.OcrStore
+import com.manga.translate.PendingBubbleRetranslator
 import com.manga.translate.ReadingEmptyBubbleCoordinator
 import com.manga.translate.ReadingProgressStore
 import com.manga.translate.SettingsStore
 import com.manga.translate.TextBubbleTranslationCoordinator
 import com.manga.translate.TranslationPipeline
+import com.manga.translate.TranslationProgressStore
 import com.manga.translate.TranslationStore
 import com.manga.translate.UpdateIgnoreStore
 
@@ -38,6 +40,7 @@ internal class AppContainer(private val appContext: Context) {
     val ocrStore by lazy(LazyThreadSafetyMode.NONE) { OcrStore() }
     val glossaryStore by lazy(LazyThreadSafetyMode.NONE) { GlossaryStore() }
     val extractStateStore by lazy(LazyThreadSafetyMode.NONE) { ExtractStateStore() }
+    val translationProgressStore by lazy(LazyThreadSafetyMode.NONE) { TranslationProgressStore() }
     val floatingTranslationCacheStore by lazy(LazyThreadSafetyMode.NONE) {
         FloatingTranslationCacheStore(appContext)
     }
@@ -74,7 +77,18 @@ internal class AppContainer(private val appContext: Context) {
             translationStore = translationStore,
             settingsStore = settingsStore,
             llmClient = llmClient,
-            ui = ui
+            ui = ui,
+            progressStore = translationProgressStore,
+            pendingBubbleRetranslator = createPendingBubbleRetranslator()
+        )
+    }
+
+    fun createPendingBubbleRetranslator(): PendingBubbleRetranslator {
+        return PendingBubbleRetranslator(
+            context = appContext,
+            settingsStore = settingsStore,
+            bubbleTextRecognizer = bubbleTextRecognizer,
+            textBubbleTranslationCoordinator = textBubbleTranslationCoordinator
         )
     }
 

@@ -63,7 +63,7 @@ internal class TranslationPipeline(
                 page.width,
                 page.height,
                 emptyTranslations,
-                metadata
+                metadata.copy(status = PageTranslationStatus.SUCCESS)
             )
         }
         onProgress(appContext.getString(R.string.translating_bubbles))
@@ -106,7 +106,8 @@ internal class TranslationPipeline(
             )
         }
         AppLogger.log("Pipeline", "Translation finished for ${imageFile.name}")
-        TranslationResult(imageFile.name, page.width, page.height, bubbles, metadata)
+        val resultBase = TranslationResult(imageFile.name, page.width, page.height, bubbles, metadata)
+        resultBase.copy(metadata = metadata.copy(status = resultBase.deriveStatus()))
     }
 
     suspend fun ocrImage(
@@ -236,7 +237,7 @@ internal class TranslationPipeline(
                 page.width,
                 page.height,
                 emptyTranslations,
-                metadata
+                metadata.copy(status = PageTranslationStatus.SUCCESS)
             )
         }
         onProgress(appContext.getString(R.string.translating_bubbles))
@@ -274,7 +275,8 @@ internal class TranslationPipeline(
                 maskContour = bubble.maskContour
             )
         }
-        TranslationResult(page.imageFile.name, page.width, page.height, bubbles, metadata)
+        val resultBase = TranslationResult(page.imageFile.name, page.width, page.height, bubbles, metadata)
+        resultBase.copy(metadata = metadata.copy(status = resultBase.deriveStatus()))
     }
 
     suspend fun translateImageWithVl(
@@ -301,7 +303,7 @@ internal class TranslationPipeline(
                             promptAsset = VL_PROMPT_ASSET,
                             ocrCacheMode = "",
                             providerContext = null
-                        )
+                        ).copy(status = PageTranslationStatus.SUCCESS)
                     )
                 )
             }
@@ -338,20 +340,24 @@ internal class TranslationPipeline(
                         requiresVlModel = outcome.requiresVlModel
                     )
                 }
+                val vlMetadata = buildTranslationMetadata(
+                    imageFile = imageFile,
+                    language = language,
+                    mode = TranslationMetadata.MODE_VL_DIRECT,
+                    promptAsset = VL_PROMPT_ASSET,
+                    ocrCacheMode = "",
+                    providerContext = null
+                )
+                val resultBase = TranslationResult(
+                    imageFile.name,
+                    page.width,
+                    page.height,
+                    outcome.bubbles,
+                    vlMetadata
+                )
                 FolderVlTranslateOutcome(
-                    result = TranslationResult(
-                        imageFile.name,
-                        page.width,
-                        page.height,
-                        outcome.bubbles,
-                        buildTranslationMetadata(
-                            imageFile = imageFile,
-                            language = language,
-                            mode = TranslationMetadata.MODE_VL_DIRECT,
-                            promptAsset = VL_PROMPT_ASSET,
-                            ocrCacheMode = "",
-                            providerContext = null
-                        )
+                    result = resultBase.copy(
+                        metadata = vlMetadata.copy(status = resultBase.deriveStatus())
                     )
                 )
             } finally {
@@ -365,12 +371,14 @@ internal class TranslationPipeline(
         useVlDirectTranslate: Boolean,
         language: TranslationLanguage
     ): Boolean {
-        return loadValidTranslation(
+        val translation = loadValidTranslation(
             imageFile = imageFile,
             fullTranslate = fullTranslate,
             useVlDirectTranslate = useVlDirectTranslate,
             language = language
-        ) != null
+        ) ?: return false
+        if (translation.metadata.isManual()) return true
+        return translation.metadata.status == PageTranslationStatus.SUCCESS
     }
 
     fun loadValidTranslation(
@@ -386,6 +394,10 @@ internal class TranslationPipeline(
             language = language
         )
         return store.load(imageFile, expectedMetadata = expected)
+    }
+
+    fun loadAnyTranslation(imageFile: File): TranslationResult? {
+        return store.load(imageFile)
     }
 
     fun saveResult(imageFile: File, result: TranslationResult): File {
