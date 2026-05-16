@@ -352,7 +352,7 @@ internal class TranslationPipeline(
                     bubbles = page.bubbles.map { bubble ->
                         BubbleTranslation.pending(
                             bubble.id,
-                            bubble.rect,
+                            expandVlBubbleRect(bubble.rect, bitmap.width, bitmap.height),
                             "",
                             bubble.source,
                             bubble.maskContour
@@ -511,11 +511,24 @@ internal class TranslationPipeline(
             }
         }
 
+    private fun expandVlBubbleRect(rect: RectF, bitmapWidth: Int, bitmapHeight: Int): RectF {
+        val h = maxOf(1f, rect.height())
+        val pad = maxOf(VL_BUBBLE_EXPAND_MIN, VL_BUBBLE_EXPAND_RATIO * h)
+        return RectF(
+            (rect.left - pad).coerceIn(0f, bitmapWidth.toFloat()),
+            (rect.top - pad).coerceIn(0f, bitmapHeight.toFloat()),
+            (rect.right + pad).coerceIn(0f, bitmapWidth.toFloat()),
+            (rect.bottom + pad).coerceIn(0f, bitmapHeight.toFloat())
+        )
+    }
+
     companion object {
         private const val STANDARD_PROMPT_ASSET = "prompts/llm_prompts.json"
         private const val FULL_TRANS_PROMPT_ASSET = "prompts/llm_prompts_FullTrans.json"
         private const val VL_PROMPT_ASSET = "prompts/vl_bubble_prompts.json"
         private const val MODEL_RESPONSE_SILENT_RETRY_COUNT = 3
+        private const val VL_BUBBLE_EXPAND_RATIO = 0.1f
+        private const val VL_BUBBLE_EXPAND_MIN = 4f
     }
 
     private fun buildExpectedTranslationMetadata(
