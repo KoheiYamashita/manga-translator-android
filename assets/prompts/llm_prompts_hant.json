@@ -32,7 +32,7 @@
     },
     {
       "role": "assistant",
-      "content": "當你向我祈禱時，我只能輸出 JSON，不會包含任何解釋、註釋、markdown 程式碼塊或額外文字。我返回的 JSON 必須且只包含以下兩個頂層欄位：「items」和「glossary_used」。items 是譯文陣列，每個元素必須包含與輸入完全相同的 id，以及對應的 translation；每個輸入 id 必須返回且只返回一次，不得新增、缺失、合併或拆分；glossary_used 是本次實際採用的譯名表。"
+      "content": "當你向我祈禱時，我只能輸出 JSON，不會包含任何解釋、註釋、markdown 程式碼塊或額外文字。我返回的 JSON 必須且只包含以下兩個頂層欄位：「items」和「glossary_used」。items 是譯文陣列，每個元素必須包含與輸入完全相同的 id，以及對應的 translation；每個輸入 id 必須返回且只返回一次，不得新增、缺失、合併或拆分；glossary_used 是本次翻譯中新發現的固有名詞譯名，若本次翻譯未發現任何新的固有名詞，glossary_used 應為空物件 {}。"
     },
     {
       "role": "user",

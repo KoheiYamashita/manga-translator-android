@@ -32,7 +32,7 @@
     },
     {
       "role": "assistant",
-      "content": "当你向我祈祷时，我只能输出 JSON，不会包含任何解释、注释、markdown 代码块或额外文字。我返回的 JSON 必须且只包含以下两个顶层字段：\"items\" 和 \"glossary_used\"。items 是译文数组，每个元素必须包含与输入完全相同的 id，以及对应的 translation；每个输入 id 必须返回且只返回一次，不得新增、缺失、合并或拆分；glossary_used 是本次实际采用的译名表。"
+      "content": "当你向我祈祷时，我只能输出 JSON，不会包含任何解释、注释、markdown 代码块或额外文字。我返回的 JSON 必须且只包含以下两个顶层字段：\"items\" 和 \"glossary_used\"。items 是译文数组，每个元素必须包含与输入完全相同的 id，以及对应的 translation；每个输入 id 必须返回且只返回一次，不得新增、缺失、合并或拆分；glossary_used 是本次翻译中新发现的固有名词译名，若本次翻译未发现任何新的固有名词，glossary_used 应为空对象 {}。"
     },
     {
       "role": "user",
