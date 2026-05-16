@@ -18,7 +18,7 @@ internal class TextBubbleTranslationCoordinator(
         if (bubbles.isEmpty()) {
             return TextBubbleTranslationBatchResult(bubbles = bubbles, glossaryUsed = emptyMap())
         }
-        val translatable = bubbles.filter { it.text.isNotBlank() }
+        val translatable = bubbles.filter { it.sourceText.isNotBlank() }
         if (translatable.isEmpty()) {
             AppLogger.log(logTag, "Skip translate: no translatable text")
             return TextBubbleTranslationBatchResult(bubbles = bubbles, glossaryUsed = emptyMap())
@@ -36,8 +36,8 @@ internal class TextBubbleTranslationCoordinator(
 
         fun merge(): List<BubbleTranslation> {
             return bubbles.map { bubble ->
-                translatedMap[bubble.id]?.takeIf { it.isNotBlank() }?.let { translated ->
-                    bubble.copy(text = translated)
+                translatedMap[bubble.id]?.let { translated ->
+                    bubble.withTranslationResult(translated)
                 } ?: bubble
             }
         }
@@ -53,7 +53,7 @@ internal class TextBubbleTranslationCoordinator(
         val requestItems = cacheMisses.map {
             LlmBubbleTranslationRequestItem(
                 id = it.id,
-                text = normalizeOcrText(it.text, language)
+                text = normalizeOcrText(it.sourceText, language)
             )
         }
         val translated = llmClient.translateBubbleItems(

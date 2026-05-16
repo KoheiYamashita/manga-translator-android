@@ -56,7 +56,7 @@ internal class TranslationPipeline(
         val translatable = page.bubbles.filter { it.text.isNotBlank() }
         if (translatable.isEmpty()) {
             val emptyTranslations = page.bubbles.map {
-                BubbleTranslation(it.id, it.rect, "", it.source, it.maskContour)
+                BubbleTranslation.pending(it.id, it.rect, "", it.source, it.maskContour)
             }
             return@withContext TranslationResult(
                 imageFile.name,
@@ -72,7 +72,13 @@ internal class TranslationPipeline(
             val translated = executeWithModelResponseRetries("Pipeline") {
                 textBubbleTranslationCoordinator.translateBubbles(
                     bubbles = translatable.map {
-                        BubbleTranslation(it.id, it.rect, it.text, it.source, it.maskContour)
+                        BubbleTranslation.pending(
+                            id = it.id,
+                            rect = it.rect,
+                            originalText = it.text,
+                            source = it.source,
+                            maskContour = it.maskContour
+                        )
                     },
                     glossary = glossary,
                     promptAsset = promptAsset,
@@ -89,10 +95,15 @@ internal class TranslationPipeline(
         } catch (e: LlmResponseException) {
             throw e.withPageName(imageFile.name)
         }
-        val translationMap = translatedBubbles.associateBy({ it.id }, { it.text })
+        val translationMap = translatedBubbles.associateBy { it.id }
         val bubbles = page.bubbles.map { bubble ->
-            val text = translationMap[bubble.id] ?: ""
-            BubbleTranslation(bubble.id, bubble.rect, text, bubble.source, bubble.maskContour)
+            translationMap[bubble.id] ?: BubbleTranslation.pending(
+                id = bubble.id,
+                rect = bubble.rect,
+                originalText = bubble.text,
+                source = bubble.source,
+                maskContour = bubble.maskContour
+            )
         }
         AppLogger.log("Pipeline", "Translation finished for ${imageFile.name}")
         TranslationResult(imageFile.name, page.width, page.height, bubbles, metadata)
@@ -218,7 +229,7 @@ internal class TranslationPipeline(
         val translatable = page.bubbles.filter { it.text.isNotBlank() }
         if (translatable.isEmpty()) {
             val emptyTranslations = page.bubbles.map {
-                BubbleTranslation(it.id, it.rect, "", it.source, it.maskContour)
+                BubbleTranslation.pending(it.id, it.rect, "", it.source, it.maskContour)
             }
             return@withContext TranslationResult(
                 page.imageFile.name,
@@ -233,7 +244,13 @@ internal class TranslationPipeline(
             val translated = executeWithModelResponseRetries("Pipeline") {
                 textBubbleTranslationCoordinator.translateBubbles(
                     bubbles = translatable.map {
-                        BubbleTranslation(it.id, it.rect, it.text, it.source, it.maskContour)
+                        BubbleTranslation.pending(
+                            id = it.id,
+                            rect = it.rect,
+                            originalText = it.text,
+                            source = it.source,
+                            maskContour = it.maskContour
+                        )
                     },
                     glossary = glossary,
                     promptAsset = promptAsset,
@@ -247,10 +264,15 @@ internal class TranslationPipeline(
         } catch (e: LlmResponseException) {
             throw e.withPageName(page.imageFile.name)
         }
-        val translationMap = translatedBubbles.associateBy({ it.id }, { it.text })
+        val translationMap = translatedBubbles.associateBy { it.id }
         val bubbles = page.bubbles.map { bubble ->
-            val text = translationMap[bubble.id] ?: ""
-            BubbleTranslation(bubble.id, bubble.rect, text, bubble.source, bubble.maskContour)
+            translationMap[bubble.id] ?: BubbleTranslation.pending(
+                id = bubble.id,
+                rect = bubble.rect,
+                originalText = bubble.text,
+                source = bubble.source,
+                maskContour = bubble.maskContour
+            )
         }
         TranslationResult(page.imageFile.name, page.width, page.height, bubbles, metadata)
     }
@@ -293,7 +315,13 @@ internal class TranslationPipeline(
                 val outcome = floatingBubbleTranslationCoordinator.translateImageBubbles(
                     bitmap = bitmap,
                     bubbles = page.bubbles.map { bubble ->
-                        BubbleTranslation(bubble.id, bubble.rect, "", bubble.source, bubble.maskContour)
+                        BubbleTranslation.pending(
+                            bubble.id,
+                            bubble.rect,
+                            "",
+                            bubble.source,
+                            bubble.maskContour
+                        )
                     },
                     timeoutMs = settingsStore.loadApiTimeoutMs(),
                     retryCount = 3,
@@ -398,7 +426,7 @@ internal class TranslationPipeline(
             providerContext = null
         )
         val bubbles = page.bubbles.map { bubble ->
-            BubbleTranslation(bubble.id, bubble.rect, "", bubble.source, bubble.maskContour)
+            BubbleTranslation.pending(bubble.id, bubble.rect, "", bubble.source, bubble.maskContour)
         }
         return TranslationResult(
             imageName = page.imageFile.name,

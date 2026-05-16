@@ -89,13 +89,139 @@ data class OcrMetadata(
     }
 }
 
+enum class BubbleTranslationState(val jsonValue: String) {
+    PENDING("pending"),
+    TRANSLATED("translated");
+
+    companion object {
+        fun fromJson(value: String?): BubbleTranslationState {
+            return entries.firstOrNull { it.jsonValue.equals(value, ignoreCase = true) } ?: PENDING
+        }
+    }
+}
+
 data class BubbleTranslation(
     val id: Int,
     val rect: RectF,
-    val text: String,
+    val originalText: String = "",
+    val translatedText: String = "",
+    val translationState: BubbleTranslationState = if (translatedText.isNotBlank()) {
+        BubbleTranslationState.TRANSLATED
+    } else {
+        BubbleTranslationState.PENDING
+    },
     val source: BubbleSource = BubbleSource.UNKNOWN,
     val maskContour: FloatArray? = null
-)
+) {
+    val text: String
+        get() = when {
+            translationState == BubbleTranslationState.TRANSLATED && translatedText.isNotBlank() -> translatedText
+            originalText.isNotBlank() -> originalText
+            else -> translatedText
+        }
+
+    val sourceText: String
+        get() = originalText.ifBlank {
+            if (translationState == BubbleTranslationState.PENDING) {
+                translatedText
+            } else {
+                ""
+            }
+        }
+
+    fun hasDisplayText(): Boolean = text.isNotBlank()
+
+    fun needsTranslationRetry(): Boolean = translationState == BubbleTranslationState.PENDING
+
+    fun withTranslationResult(value: String): BubbleTranslation {
+        val normalized = value.trim()
+        return if (normalized.isNotBlank()) {
+            copy(
+                translatedText = normalized,
+                translationState = BubbleTranslationState.TRANSLATED
+            )
+        } else {
+            copy(
+                translatedText = "",
+                translationState = BubbleTranslationState.PENDING
+            )
+        }
+    }
+
+    fun withRecognizedOriginalText(value: String): BubbleTranslation {
+        return copy(
+            originalText = value.trim(),
+            translatedText = "",
+            translationState = BubbleTranslationState.PENDING
+        )
+    }
+
+    fun withManualText(value: String): BubbleTranslation {
+        return if (value.isBlank()) {
+            copy(
+                originalText = "",
+                translatedText = "",
+                translationState = BubbleTranslationState.PENDING
+            )
+        } else {
+            copy(
+                translatedText = value,
+                translationState = BubbleTranslationState.TRANSLATED
+            )
+        }
+    }
+
+    fun withContentFrom(other: BubbleTranslation): BubbleTranslation {
+        return copy(
+            originalText = other.originalText,
+            translatedText = other.translatedText,
+            translationState = other.translationState
+        )
+    }
+
+    companion object {
+        fun pending(
+            id: Int,
+            rect: RectF,
+            originalText: String = "",
+            source: BubbleSource = BubbleSource.UNKNOWN,
+            maskContour: FloatArray? = null
+        ): BubbleTranslation {
+            return BubbleTranslation(
+                id = id,
+                rect = rect,
+                originalText = originalText,
+                translatedText = "",
+                translationState = BubbleTranslationState.PENDING,
+                source = source,
+                maskContour = maskContour
+            )
+        }
+
+        fun translated(
+            id: Int,
+            rect: RectF,
+            translatedText: String,
+            source: BubbleSource = BubbleSource.UNKNOWN,
+            maskContour: FloatArray? = null,
+            originalText: String = ""
+        ): BubbleTranslation {
+            return BubbleTranslation(
+                id = id,
+                rect = rect,
+                originalText = originalText,
+                translatedText = translatedText,
+                translationState = if (translatedText.isNotBlank()) {
+                    BubbleTranslationState.TRANSLATED
+                } else {
+                    BubbleTranslationState.PENDING
+                },
+                source = source,
+                maskContour = maskContour
+            )
+        }
+    }
+}
 
 data class TranslationResult(
     val imageName: String,

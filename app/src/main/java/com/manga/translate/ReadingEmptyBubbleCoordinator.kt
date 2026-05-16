@@ -26,7 +26,7 @@ internal class ReadingEmptyBubbleCoordinator(
         folder: File,
         baseTranslation: TranslationResult
     ): EmptyBubbleProcessOutcome? = withContext(Dispatchers.Default) {
-        val targets = baseTranslation.bubbles.filter { it.text.isBlank() }
+        val targets = baseTranslation.bubbles.filter { it.needsTranslationRetry() }
         if (targets.isEmpty()) return@withContext null
         if (!settingsStore.load().isValid()) {
             AppLogger.log("Reading", "Missing translate API settings for empty bubble translation")
@@ -82,9 +82,9 @@ internal class ReadingEmptyBubbleCoordinator(
                     glossaryStore.save(folder, glossary)
                 }
             }
-            val translationMap = translated.bubbles.associateBy({ it.id }, { it.text })
+            val translationMap = translated.bubbles.associateBy { it.id }
             val merged = remainingBubbles.map { bubble ->
-                translationMap[bubble.id]?.let { bubble.copy(text = it) } ?: bubble
+                translationMap[bubble.id]?.let { bubble.withContentFrom(it) } ?: bubble
             }
             val updated = baseTranslation.copy(bubbles = merged)
             withContext(Dispatchers.IO) {
@@ -112,7 +112,12 @@ internal class ReadingEmptyBubbleCoordinator(
         try {
             textBubbleTranslationCoordinator.translateBubbles(
                 bubbles = bubbles.map { bubble ->
-                    BubbleTranslation(bubble.id, bubble.rect, bubble.text, bubble.source)
+                    BubbleTranslation.pending(
+                        id = bubble.id,
+                        rect = bubble.rect,
+                        originalText = bubble.text,
+                        source = bubble.source
+                    )
                 },
                 glossary = glossary,
                 promptAsset = promptAsset,

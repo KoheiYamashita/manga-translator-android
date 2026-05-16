@@ -36,13 +36,56 @@ class TranslationStore {
                     item.optDouble("right").toFloat(),
                     item.optDouble("bottom").toFloat()
                 )
-                val text = item.optString("text", "")
                 val source = BubbleSource.fromJson(if (item.has("source")) item.optString("source") else null)
+                val originalText = if (item.has("originalText")) {
+                    item.optString("originalText", "")
+                } else {
+                    ""
+                }
+                val translatedText = if (item.has("translatedText")) {
+                    item.optString("translatedText", "")
+                } else {
+                    ""
+                }
+                val translationState = if (item.has("translationState")) {
+                    BubbleTranslationState.fromJson(item.optString("translationState"))
+                } else {
+                    val legacyText = item.optString("text", "")
+                    if (legacyText.isBlank()) {
+                        BubbleTranslationState.PENDING
+                    } else {
+                        BubbleTranslationState.TRANSLATED
+                    }
+                }
                 val maskContourJson = item.optJSONArray("maskContour")
                 val maskContour = if (maskContourJson != null && maskContourJson.length() >= 6) {
                     FloatArray(maskContourJson.length()) { i -> maskContourJson.optDouble(i).toFloat() }
                 } else null
-                bubbles.add(BubbleTranslation(id, rect, text, source, maskContour))
+                val bubble = if (
+                    item.has("originalText") ||
+                    item.has("translatedText") ||
+                    item.has("translationState")
+                ) {
+                    BubbleTranslation(
+                        id = id,
+                        rect = rect,
+                        originalText = originalText,
+                        translatedText = translatedText,
+                        translationState = translationState,
+                        source = source,
+                        maskContour = maskContour
+                    )
+                } else {
+                    val legacyText = item.optString("text", "")
+                    BubbleTranslation.translated(
+                        id = id,
+                        rect = rect,
+                        translatedText = legacyText,
+                        source = source,
+                        maskContour = maskContour
+                    )
+                }
+                bubbles.add(bubble)
             }
             TranslationResult(
                 imageName = json.optString("image", imageFile.name),
@@ -85,6 +128,9 @@ class TranslationStore {
                 .put("right", bubble.rect.right)
                 .put("bottom", bubble.rect.bottom)
                 .put("text", bubble.text)
+                .put("originalText", bubble.originalText)
+                .put("translatedText", bubble.translatedText)
+                .put("translationState", bubble.translationState.jsonValue)
                 .put("source", bubble.source.jsonValue)
             if (bubble.maskContour != null) {
                 val contourArr = JSONArray()

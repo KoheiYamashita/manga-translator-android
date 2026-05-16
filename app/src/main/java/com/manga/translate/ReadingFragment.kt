@@ -1359,7 +1359,7 @@ class ReadingFragment : Fragment() {
             setText(bubble.text)
             setSelection(text?.length ?: 0)
             minLines = 2
-            if (bubble.text.isBlank()) {
+            if (!bubble.hasDisplayText()) {
                 hint = getString(R.string.reading_empty_bubble_hint)
             }
             setTextColor(resolveColorAttr(R.attr.dialogTextColor))
@@ -1375,7 +1375,7 @@ class ReadingFragment : Fragment() {
                 val refreshed = currentTranslation ?: return@setPositiveButton
                 val updatedBubbles = refreshed.bubbles.map { current ->
                     if (current.id == bubbleId) {
-                        current.copy(text = updatedText)
+                        current.withManualText(updatedText)
                     } else {
                         current
                     }
@@ -1522,7 +1522,7 @@ class ReadingFragment : Fragment() {
         val top = (height - bubbleHeight) / 2f
         val rect = RectF(left, top, left + bubbleWidth, top + bubbleHeight)
         val nextId = (translation.bubbles.maxOfOrNull { it.id } ?: -1) + 1
-        val newBubble = BubbleTranslation(nextId, rect, "", BubbleSource.MANUAL)
+        val newBubble = BubbleTranslation.pending(nextId, rect, "", BubbleSource.MANUAL)
         val updated = translation.copy(bubbles = translation.bubbles + newBubble)
         currentTranslation = updated
         renderCurrentTranslation()
@@ -1534,7 +1534,7 @@ class ReadingFragment : Fragment() {
         val imageFile = currentImageFile ?: return
         val translation = currentTranslation ?: return
         val folder = readingSessionViewModel.currentFolder.value ?: return
-        if (translation.bubbles.none { it.text.isBlank() }) return
+        if (translation.bubbles.none { it.needsTranslationRetry() }) return
         Toast.makeText(requireContext(), R.string.reading_empty_bubble_translating, Toast.LENGTH_SHORT).show()
         emptyBubbleJob?.cancel()
         emptyBubbleJob = viewLifecycleOwner.lifecycleScope.launch {

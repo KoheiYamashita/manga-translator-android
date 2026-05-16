@@ -189,7 +189,7 @@ class FloatingTranslationView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return
         for (bubble in bubbles) {
-            if (bubble.text.isBlank() && !editMode) continue
+            if (!bubble.hasDisplayText() && !editMode) continue
             updateBubbleRect(bubbleRect, bubble)
             drawBubble(canvas, bubble)
             if (editMode) {

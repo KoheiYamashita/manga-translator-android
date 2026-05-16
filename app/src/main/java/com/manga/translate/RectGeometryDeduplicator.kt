@@ -365,10 +365,10 @@ object RectGeometryDeduplicator {
         }
 
         fun toBubbleTranslation(id: Int): BubbleTranslation {
-            return BubbleTranslation(
+            return BubbleTranslation.pending(
                 id = id,
                 rect = RectF(rect),
-                text = text,
+                originalText = text,
                 source = source,
                 maskContour = maskContour
             )

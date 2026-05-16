@@ -29,7 +29,7 @@ internal class FloatingBubbleTranslationCoordinator(
         logTag: String = "FloatingOCR"
     ): List<BubbleTranslation>? {
         if (bubbles.isEmpty()) return bubbles
-        val translatable = bubbles.filter { it.text.isNotBlank() }
+        val translatable = bubbles.filter { it.sourceText.isNotBlank() }
         if (translatable.isEmpty()) {
             AppLogger.log(logTag, "Skip translate: no translatable text")
             return bubbles
@@ -47,7 +47,7 @@ internal class FloatingBubbleTranslationCoordinator(
         var similarityCacheHits = 0
         for (bubble in translatable) {
             val cached = floatingTranslationCacheStore.findTextTranslation(
-                text = bubble.text,
+                text = bubble.sourceText,
                 language = language
             )
             if (cached == null) {
@@ -68,8 +68,8 @@ internal class FloatingBubbleTranslationCoordinator(
 
         fun merge(): List<BubbleTranslation> {
             return bubbles.map { bubble ->
-                translatedMap[bubble.id]?.takeIf { it.isNotBlank() }?.let { translated ->
-                    bubble.copy(text = translated)
+                translatedMap[bubble.id]?.let { translated ->
+                    bubble.withTranslationResult(translated)
                 } ?: bubble
             }
         }
@@ -91,12 +91,12 @@ internal class FloatingBubbleTranslationCoordinator(
                 translationMode = "floating_text"
             ) ?: return null
             for (bubble in result.bubbles) {
-                if (bubble.text.isNotBlank()) {
-                    translatedMap[bubble.id] = bubble.text
+                if (bubble.translationState == BubbleTranslationState.TRANSLATED) {
+                    translatedMap[bubble.id] = bubble.translatedText
                     val source = cacheMisses.firstOrNull { it.id == bubble.id } ?: continue
                     floatingTranslationCacheStore.putTextTranslation(
-                        text = source.text,
-                        translation = bubble.text,
+                        text = source.sourceText,
+                        translation = bubble.translatedText,
                         language = language
                     )
                 }
@@ -152,7 +152,7 @@ internal class FloatingBubbleTranslationCoordinator(
                         AppLogger.log("FloatingCache", "VL cache hit bubble=${bubble.id}")
                         crop.recycleSafely()
                         return@withPermit FloatingBubbleImageTranslateTaskResult(
-                            bubble = bubble.copy(text = cachedTranslation)
+                            bubble = bubble.withTranslationResult(cachedTranslation)
                         )
                     }
                     val translatedText = try {
@@ -199,7 +199,7 @@ internal class FloatingBubbleTranslationCoordinator(
                         )
                     }
                     FloatingBubbleImageTranslateTaskResult(
-                        bubble = bubble.copy(text = translatedText)
+                        bubble = bubble.withTranslationResult(translatedText)
                     )
                 }
             }

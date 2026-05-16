@@ -28,7 +28,7 @@ class FloatingEmptyBubbleCoordinator(
         floatVlPromptAsset: String,
         maxVlConcurrency: Int
     ): FloatingEmptyBubbleOutcome = withContext(Dispatchers.Default) {
-        val targets = baseTranslation.bubbles.filter { it.text.isBlank() }
+        val targets = baseTranslation.bubbles.filter { it.needsTranslationRetry() }
         if (targets.isEmpty()) {
             return@withContext FloatingEmptyBubbleOutcome(baseTranslation)
         }
@@ -57,9 +57,8 @@ class FloatingEmptyBubbleCoordinator(
                     requiresVlModel = outcome.requiresVlModel
                 )
             }
-            val translations = outcome.bubbles.associateBy({ it.id }, { it.text })
             baseTranslation.bubbles.map { bubble ->
-                translations[bubble.id]?.let { bubble.copy(text = it) } ?: bubble
+                outcome.bubbles.firstOrNull { it.id == bubble.id }?.let { bubble.withContentFrom(it) } ?: bubble
             }
         } else {
             val recognized = recognizeEmptyBubbles(bitmap, targets)
@@ -73,9 +72,9 @@ class FloatingEmptyBubbleCoordinator(
                 translation = baseTranslation,
                 timedOut = true
             )
-            val translations = translated.associateBy({ it.id }, { it.text })
+            val translationMap = translated.associateBy { it.id }
             baseTranslation.bubbles.map { bubble ->
-                translations[bubble.id]?.let { bubble.copy(text = it) } ?: bubble
+                translationMap[bubble.id]?.let { bubble.withContentFrom(it) } ?: bubble
             }
         }
 
@@ -102,7 +101,7 @@ class FloatingEmptyBubbleCoordinator(
             } finally {
                 crop?.recycle()
             }
-            bubble.copy(text = text)
+            bubble.withRecognizedOriginalText(text)
         }
     }
 

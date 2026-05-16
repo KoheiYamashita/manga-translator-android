@@ -835,7 +835,7 @@ class FloatingBallOverlayService : Service() {
     private fun appendManualBubble(rect: RectF) {
         val session = currentSession ?: return
         val nextId = (session.bubbles.maxOfOrNull { it.id } ?: -1) + 1
-        val bubble = BubbleTranslation(nextId, RectF(rect), "", BubbleSource.MANUAL)
+        val bubble = BubbleTranslation.pending(nextId, RectF(rect), "", BubbleSource.MANUAL)
         currentSession = session.copy(bubbles = session.bubbles + bubble)
         createBubbleModeEnabled = false
         setFloatingBallHidden(false)
@@ -1009,12 +1009,14 @@ class FloatingBallOverlayService : Service() {
                     floatingBubbleTranslationCoordinator.translateImageBubbles(
                         bitmap = bitmap,
                         bubbles = deduplicatedRects.mapIndexed { index, rect ->
-                            BubbleTranslation(
-                                id = index,
-                                rect = rect,
-                                text = "",
-                                source = BubbleSource.TEXT_DETECTOR
-                            )
+                        BubbleTranslation(
+                            id = index,
+                            rect = rect,
+                            originalText = "",
+                            translatedText = "",
+                            translationState = BubbleTranslationState.PENDING,
+                            source = BubbleSource.TEXT_DETECTOR
+                        )
                         },
                         timeoutMs = floatingTimeoutMs,
                         retryCount = FLOATING_TRANSLATE_RETRY_COUNT,
@@ -1072,7 +1074,9 @@ class FloatingBallOverlayService : Service() {
                         BubbleTranslation(
                             id = bubble.id,
                             rect = bubble.rect,
-                            text = bubble.text,
+                            originalText = bubble.text,
+                            translatedText = "",
+                            translationState = BubbleTranslationState.PENDING,
                             source = bubble.source,
                             maskContour = bubble.maskContour
                         )
@@ -1115,7 +1119,7 @@ class FloatingBallOverlayService : Service() {
                         height = capturedBitmap.height,
                         bubbles = translatedBubbles
                     )
-                    if (firstPass.bubbles.any { it.text.isBlank() }) {
+                    if (firstPass.bubbles.any { it.needsTranslationRetry() }) {
                         emptyBubbleCoordinator.process(
                             bitmap = capturedBitmap,
                             baseTranslation = firstPass,
@@ -1221,10 +1225,10 @@ class FloatingBallOverlayService : Service() {
                 semaphore.withPermit {
                     val crop = cropBitmap(bitmap, rect)
                     if (crop == null) {
-                        return@withPermit BubbleTranslation(
+                        return@withPermit BubbleTranslation.pending(
                             id = index,
                             rect = rect,
-                            text = "",
+                            originalText = "",
                             source = BubbleSource.TEXT_DETECTOR
                         )
                     }
@@ -1240,10 +1244,10 @@ class FloatingBallOverlayService : Service() {
                     } finally {
                         crop.recycleSafely()
                     }
-                    BubbleTranslation(
+                    BubbleTranslation.pending(
                         id = index,
                         rect = rect,
-                        text = text,
+                        originalText = text,
                         source = BubbleSource.TEXT_DETECTOR
                     )
                 }
