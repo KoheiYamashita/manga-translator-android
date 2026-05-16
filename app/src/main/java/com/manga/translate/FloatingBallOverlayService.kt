@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.content.res.ColorStateList
+import android.view.ContextThemeWrapper
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
@@ -562,24 +563,13 @@ class FloatingBallOverlayService : Service() {
 
     private fun createMenuButton(): AppCompatButton {
         val density = resources.displayMetrics.density
-        return AppCompatButton(this).apply {
-            textSize = 13f
+        return AppCompatButton(
+            ContextThemeWrapper(this, R.style.Widget_MangaTranslator_DialogActionButton)
+        ).apply {
             gravity = Gravity.CENTER
-            setTextColor(0xFF1F1F1F.toInt())
-            background = GradientDrawable().apply {
-                cornerRadius = 12f * density
-                setColor(0xF7FFFFFF.toInt())
-                setStroke((1f * density).toInt(), 0x2A1F1F1F)
-            }
             elevation = 6f * density
             minimumWidth = 0
             minWidth = 0
-            setPadding(
-                (14f * density).toInt(),
-                (8f * density).toInt(),
-                (14f * density).toInt(),
-                (8f * density).toInt()
-            )
         }
     }
 
