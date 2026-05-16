@@ -550,22 +550,7 @@ internal class TranslationPipeline(
                 providerContext = null
             )
         }
-        if (useVlDirectTranslate) {
-            return baseMetadata
-        }
-        val providerPool = settingsStore.loadMainTranslationProviderPool()
-        if (providerPool.isEmpty()) {
-            return baseMetadata
-        }
-        return baseMetadata.copy(
-            modelName = providerPool.map { it.settings.modelName.trim() }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .joinToString("|"),
-            providerId = providerPool.map { it.providerId }
-                .distinct()
-                .joinToString("|")
-        )
+        return baseMetadata
     }
 
     private fun buildTranslationMetadata(

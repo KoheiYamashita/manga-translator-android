@@ -206,32 +206,10 @@ class TranslationStore {
         if (isLegacyTranslationMetadata(actual)) {
             return true
         }
-        val allowedProviderIds = expected.providerId
-            .split('|')
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .toSet()
-        val allowedModelNames = expected.modelName
-            .split('|')
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .toSet()
-        val modelMatches = when {
-            allowedModelNames.isEmpty() -> actual.modelName == expected.modelName
-            else -> actual.modelName in allowedModelNames
-        }
-        val providerMatches = when {
-            allowedProviderIds.isEmpty() -> actual.providerId.isBlank() || actual.providerId == expected.providerId
-            actual.providerId.isBlank() -> true
-            else -> actual.providerId in allowedProviderIds
-        }
         return actual.version == expected.version &&
             actual.mode == expected.mode &&
             actual.language == expected.language &&
             actual.promptAsset == expected.promptAsset &&
-            modelMatches &&
-            providerMatches &&
-            actual.apiFormat == expected.apiFormat &&
             actual.ocrCacheMode == expected.ocrCacheMode
     }
 
