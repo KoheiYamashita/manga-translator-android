@@ -78,11 +78,6 @@ https://cloud.siliconflow.cn/i/bfTLExxn
 * 如果看不到实名认证页面，可以在浏览器里切换到电脑模式，再访问硅基流动电脑版页面
 * 硅基流动整体速度可能会比较慢
 
-## Ccode - 自营中转站
-
-https://api.ccode.vip/register?aff=phFG
-Ccode 是一个自营中转站，价格非常便宜。详情请自行访问查看。
-
 ## 小提示
 
 * 不要把自己的 API Key 发给别人
