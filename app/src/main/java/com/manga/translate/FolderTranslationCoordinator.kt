@@ -1388,7 +1388,7 @@ internal class FolderTranslationCoordinator(
         folder: File
     ) {
         if (additions.isEmpty()) return
-        val changed = glossaryMutex.withLock {
+        val snapshotToSave = glossaryMutex.withLock {
             var changed = false
             additions.forEach { (key, value) ->
                 if (key.isBlank() || value.isBlank()) return@forEach
@@ -1397,10 +1397,12 @@ internal class FolderTranslationCoordinator(
                     changed = true
                 }
             }
-            changed
+            if (changed) LinkedHashMap(glossary) else null
         }
-        if (changed) {
-            glossaryStore.save(folder, glossary)
+        if (snapshotToSave != null) {
+            withContext(Dispatchers.IO) {
+                glossaryStore.save(folder, snapshotToSave)
+            }
         }
     }
 
