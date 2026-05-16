@@ -27,7 +27,8 @@ data class OcrApiSettings(
     val apiUrl: String,
     val apiKey: String,
     val modelName: String,
-    val timeoutSeconds: Int
+    val timeoutSeconds: Int,
+    val apiOcrConcurrencyLimit: Int = 1
 ) {
     fun isValid(): Boolean {
         return useLocalOcr || (apiUrl.isNotBlank() && apiKey.isNotBlank() && modelName.isNotBlank())
@@ -241,13 +242,19 @@ class SettingsStore(context: Context) {
             apiUrl = url,
             apiKey = key,
             modelName = model,
-            timeoutSeconds = timeoutSeconds
+            timeoutSeconds = timeoutSeconds,
+            apiOcrConcurrencyLimit = prefs.getInt(
+                KEY_OCR_API_CONCURRENCY,
+                DEFAULT_OCR_API_CONCURRENCY
+            ).coerceIn(MIN_OCR_API_CONCURRENCY, MAX_OCR_API_CONCURRENCY)
         )
     }
 
     fun saveOcrApiSettings(settings: OcrApiSettings) {
         val normalizedTimeout = settings.timeoutSeconds
             .coerceIn(MIN_OCR_API_TIMEOUT_SECONDS, MAX_OCR_API_TIMEOUT_SECONDS)
+        val normalizedConcurrency = settings.apiOcrConcurrencyLimit
+            .coerceIn(MIN_OCR_API_CONCURRENCY, MAX_OCR_API_CONCURRENCY)
         prefs.edit() {
                 putBoolean(KEY_OCR_USE_LOCAL, settings.useLocalOcr)
                 .putString(
@@ -258,6 +265,7 @@ class SettingsStore(context: Context) {
                 .putString(KEY_OCR_API_KEY, settings.apiKey)
                 .putString(KEY_OCR_MODEL_NAME, settings.modelName)
                 .putInt(KEY_OCR_API_TIMEOUT_SECONDS, normalizedTimeout)
+                .putInt(KEY_OCR_API_CONCURRENCY, normalizedConcurrency)
             }
     }
 
@@ -850,6 +858,7 @@ class SettingsStore(context: Context) {
                     .put("apiKey", profile.ocrSettings.apiKey)
                     .put("modelName", profile.ocrSettings.modelName)
                     .put("timeoutSeconds", profile.ocrSettings.timeoutSeconds)
+                    .put("apiOcrConcurrencyLimit", profile.ocrSettings.apiOcrConcurrencyLimit)
             )
             .put(
                 "floatingTranslateSettings",
@@ -972,7 +981,11 @@ class SettingsStore(context: Context) {
                 timeoutSeconds = ocrJson.optInt(
                     "timeoutSeconds",
                     DEFAULT_OCR_API_TIMEOUT_SECONDS
-                ).coerceIn(MIN_OCR_API_TIMEOUT_SECONDS, MAX_OCR_API_TIMEOUT_SECONDS)
+                ).coerceIn(MIN_OCR_API_TIMEOUT_SECONDS, MAX_OCR_API_TIMEOUT_SECONDS),
+                apiOcrConcurrencyLimit = ocrJson.optInt(
+                    "apiOcrConcurrencyLimit",
+                    DEFAULT_OCR_API_CONCURRENCY
+                ).coerceIn(MIN_OCR_API_CONCURRENCY, MAX_OCR_API_CONCURRENCY)
             ),
             floatingTranslateSettings = FloatingTranslateApiSettings(
                 apiUrl = floatingJson.optString("apiUrl"),
@@ -1135,6 +1148,7 @@ class SettingsStore(context: Context) {
         private const val KEY_FLOATING_BUBBLE_MIN_AREA_PER_CHAR_SP =
             "floating_bubble_min_area_per_char_sp"
         private const val KEY_OCR_API_TIMEOUT_SECONDS = "ocr_api_timeout_seconds"
+        private const val KEY_OCR_API_CONCURRENCY = "ocr_api_concurrency"
         private const val KEY_HORIZONTAL_TEXT = "horizontal_text_layout"
         private const val KEY_NORMAL_BUBBLE_SHRINK_PERCENT = "normal_bubble_shrink_percent"
         private const val KEY_NORMAL_BUBBLE_MIN_AREA_PER_CHAR_SP = "normal_bubble_min_area_per_char_sp"
@@ -1174,6 +1188,9 @@ class SettingsStore(context: Context) {
         private const val DEFAULT_OCR_API_TIMEOUT_SECONDS = 300
         private const val MIN_OCR_API_TIMEOUT_SECONDS = 30
         private const val MAX_OCR_API_TIMEOUT_SECONDS = 1200
+        private const val DEFAULT_OCR_API_CONCURRENCY = 1
+        private const val MIN_OCR_API_CONCURRENCY = 1
+        private const val MAX_OCR_API_CONCURRENCY = 16
         private const val DEFAULT_FLOATING_VL_TRANSLATE_CONCURRENCY = 1
         private const val MIN_FLOATING_VL_TRANSLATE_CONCURRENCY = 1
         private const val MAX_FLOATING_VL_TRANSLATE_CONCURRENCY = 16

@@ -21,6 +21,7 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.io.ByteArrayOutputStream
 import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -32,6 +33,8 @@ class LlmClient(
     private val appContext = context.applicationContext
     private val promptCache = mutableMapOf<String, LlmPromptConfig>()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
+    private val baseHttpClient = OkHttpClient()
+    private val httpClientCache = ConcurrentHashMap<Int, OkHttpClient>()
 
     fun isConfigured(apiSettings: ApiSettings? = null): Boolean {
         return (apiSettings ?: settingsStore.load()).isValid()
@@ -1294,12 +1297,14 @@ class LlmClient(
     }
 
     private suspend fun executeRequest(request: Request, timeoutMs: Int): Response {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .writeTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .callTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .build()
+        val client = httpClientCache.getOrPut(timeoutMs) {
+            baseHttpClient.newBuilder()
+                .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .writeTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .callTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .build()
+        }
         return executeCallCancellable(client.newCall(request))
     }
 

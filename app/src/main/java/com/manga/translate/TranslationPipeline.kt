@@ -3,6 +3,11 @@ package com.manga.translate
 import android.content.Context
 import android.graphics.RectF
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -164,26 +169,54 @@ internal class TranslationPipeline(
                 return@withContext emptyResult
             }
             val bubbles = ArrayList<OcrBubble>(regions.size)
-            for (region in regions) {
-                val text = bubbleTextRecognizer.recognizeRegion(
-                    source = bitmap,
-                    rect = region.rect,
-                    language = language,
-                    useLocalOcr = useLocalOcr,
-                    logTag = "Pipeline"
-                )
-                if (text.isBlank() && !useLocalOcr) {
-                    continue
-                }
-                bubbles.add(
-                    OcrBubble(
-                        id = region.id,
+            if (useLocalOcr || ocrSettings.apiOcrConcurrencyLimit <= 1) {
+                for (region in regions) {
+                    val text = bubbleTextRecognizer.recognizeRegion(
+                        source = bitmap,
                         rect = region.rect,
-                        text = text,
-                        source = region.source,
-                        maskContour = region.maskContour
+                        language = language,
+                        useLocalOcr = useLocalOcr,
+                        logTag = "Pipeline"
                     )
-                )
+                    if (text.isBlank() && !useLocalOcr) {
+                        continue
+                    }
+                    bubbles.add(
+                        OcrBubble(
+                            id = region.id,
+                            rect = region.rect,
+                            text = text,
+                            source = region.source,
+                            maskContour = region.maskContour
+                        )
+                    )
+                }
+            } else {
+                val semaphore = Semaphore(ocrSettings.apiOcrConcurrencyLimit)
+                val results = coroutineScope {
+                    regions.map { region ->
+                        async(Dispatchers.IO) {
+                            semaphore.withPermit {
+                                val text = bubbleTextRecognizer.recognizeRegion(
+                                    source = bitmap,
+                                    rect = region.rect,
+                                    language = language,
+                                    useLocalOcr = false,
+                                    logTag = "Pipeline"
+                                )
+                                if (text.isBlank()) null
+                                else OcrBubble(
+                                    id = region.id,
+                                    rect = region.rect,
+                                    text = text,
+                                    source = region.source,
+                                    maskContour = region.maskContour
+                                )
+                            }
+                        }
+                    }.awaitAll()
+                }
+                results.filterNotNullTo(bubbles)
             }
             val mergedBubbles = RectGeometryDeduplicator.mergeShortTextDetectorOcrBubbles(
                 bubbles = bubbles,

@@ -90,5 +90,22 @@
                 android:inputType="number" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/ocr_api_concurrency_layout"
+            style="@style/Widget.MangaTranslator.Input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/ocr_api_concurrency_hint"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                style="@style/Widget.MangaTranslator.DialogEditText"
+                android:id="@+id/ocr_api_concurrency_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
     </LinearLayout>
 </ScrollView>
