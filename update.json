@@ -1,11 +1,19 @@
 {
-  "versionCode": 58,
-  "versionName": "3.2.0",
+  "versionCode": 59,
+  "versionName": "3.2.1",
   "releaseChannel": "stable",
-  "releasedAt": "2026-05-17",
-  "apkUrl": "https://github.com/jedzqer/manga-translator-android/releases/download/v3.2.0/app-release.apk",
-  "changelog": "修复漫画库页的文件排序错乱，修复翻译结果空白 bug，优化断点续翻并加强翻译稳定性，写盘改为原子提交以防止中断留下半截 JSON，复用 OkHttpClient 并支持 API OCR 页内并发，优化悬浮窗翻译按钮样式并更新优化提示词，支持翻译文风切换，修复悬浮窗 VL 翻译速度慢的问题，优化 VL 直译质量。",
+  "releasedAt": "2026-05-18",
+  "apkUrl": "https://github.com/jedzqer/manga-translator-android/releases/download/v3.2.1/app-release.apk",
+  "changelog": "修复 AVIF 图片支持异常，减小软件包体积。",
   "history": [
+    {
+      "versionCode": 58,
+      "versionName": "3.2.0",
+      "releaseChannel": "stable",
+      "releasedAt": "2026-05-17",
+      "apkUrl": "https://github.com/jedzqer/manga-translator-android/releases/download/v3.2.0/app-release.apk",
+      "changelog": "修复漫画库页的文件排序错乱，修复翻译结果空白 bug，优化断点续翻并加强翻译稳定性，写盘改为原子提交以防止中断留下半截 JSON，复用 OkHttpClient 并支持 API OCR 页内并发，优化悬浮窗翻译按钮样式并更新优化提示词，支持翻译文风切换，修复悬浮窗 VL 翻译速度慢的问题，优化 VL 直译质量。"
+    },
     {
       "versionCode": 57,
       "versionName": "3.1.1",
