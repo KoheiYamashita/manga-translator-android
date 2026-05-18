@@ -661,7 +661,7 @@ class LibraryFragment : Fragment() {
 
         val outgoing = if (showDetail) binding.libraryListContainer else binding.folderDetailContainer
         val incoming = if (showDetail) binding.folderDetailContainer else binding.libraryListContainer
-        val offset = (resources.displayMetrics.density * 24).toFloat()
+        val offset = resources.displayMetrics.density * 24
 
         outgoing.animate().cancel()
         incoming.animate().cancel()

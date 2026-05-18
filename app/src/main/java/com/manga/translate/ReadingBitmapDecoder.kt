@@ -14,6 +14,17 @@ object ReadingBitmapDecoder {
     private const val DETAIL_MULTIPLIER = 2
 
     fun decode(imageFile: java.io.File, targetWidth: Int, targetHeight: Int): DecodedReadingBitmap? {
+        if (ImageFileSupport.isAvifFile(imageFile.name)) {
+            val safeWidth = targetWidth.coerceAtLeast(1) * DETAIL_MULTIPLIER
+            val safeHeight = targetHeight.coerceAtLeast(1) * DETAIL_MULTIPLIER
+            val (bitmap, size) = AvifBitmapDecoder.decodeSampled(imageFile, safeWidth, safeHeight)
+            if (bitmap == null || size == null) return null
+            return DecodedReadingBitmap(
+                bitmap = bitmap,
+                sourceWidth = size.width,
+                sourceHeight = size.height
+            )
+        }
         val safeTargetWidth = targetWidth.coerceAtLeast(1)
         val safeTargetHeight = targetHeight.coerceAtLeast(1)
         val bounds = BitmapFactory.Options().apply {

@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 
 enum class FloatingBallGestureAction(
     val prefValue: String,
-    @StringRes val labelRes: Int
+    @param:StringRes val labelRes: Int
 ) {
     START_TRANSLATE("start_translate", R.string.floating_gesture_action_translate),
     OPEN_MENU("open_menu", R.string.floating_gesture_action_open_menu),

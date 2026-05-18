@@ -145,11 +145,14 @@ internal class TranslationPipeline(
         if (useLocalOcr && ocrEngine == null) {
             return@withContext null
         }
-        val bitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
-            ?: run {
-                AppLogger.log("Pipeline", "Failed to decode ${imageFile.name}")
-                return@withContext null
-            }
+        val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
+            AvifBitmapDecoder.decode(imageFile)
+        } else {
+            android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
+        } ?: run {
+            AppLogger.log("Pipeline", "Failed to decode ${imageFile.name}")
+            return@withContext null
+        }
         try {
             onProgress(appContext.getString(R.string.detecting_bubbles))
             val pageRegions = pageRegionDetector.detect(bitmap, logTag = "Pipeline")
@@ -340,11 +343,14 @@ internal class TranslationPipeline(
                     )
                 )
             }
-            val bitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
-                ?: run {
-                    AppLogger.log("Pipeline", "Failed to decode ${imageFile.name} for VL direct translate")
-                    return@withContext FolderVlTranslateOutcome()
-                }
+            val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
+                AvifBitmapDecoder.decode(imageFile)
+            } else {
+                android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
+            } ?: run {
+                AppLogger.log("Pipeline", "Failed to decode ${imageFile.name} for VL direct translate")
+                return@withContext FolderVlTranslateOutcome()
+            }
             try {
                 val floatingSettings = settingsStore.loadFloatingTranslateApiSettings()
                 val outcome = floatingBubbleTranslationCoordinator.translateImageBubbles(
@@ -488,11 +494,14 @@ internal class TranslationPipeline(
 
     private suspend fun detectImageBubbles(imageFile: File): PageOcrResult? =
         withContext(Dispatchers.Default) {
-            val bitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
-                ?: run {
-                    AppLogger.log("Pipeline", "Failed to decode ${imageFile.name}")
-                    return@withContext null
-                }
+            val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
+                AvifBitmapDecoder.decode(imageFile)
+            } else {
+                android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
+            } ?: run {
+                AppLogger.log("Pipeline", "Failed to decode ${imageFile.name}")
+                return@withContext null
+            }
             try {
                 val pageRegions = pageRegionDetector.detect(bitmap, logTag = "Pipeline")
                     ?: return@withContext null

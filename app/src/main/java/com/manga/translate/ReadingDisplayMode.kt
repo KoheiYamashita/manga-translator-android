@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 
 enum class ReadingDisplayMode(
     val prefValue: String,
-    @StringRes val labelRes: Int
+    @param:StringRes val labelRes: Int
 ) {
     FIT_WIDTH("fit_width", R.string.reading_display_fit_width),
     FIT_HEIGHT("fit_height", R.string.reading_display_fit_height);

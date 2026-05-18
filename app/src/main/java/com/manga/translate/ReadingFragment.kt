@@ -604,6 +604,10 @@ class ReadingFragment : Fragment() {
     }
 
     private fun readImageBounds(imageFile: java.io.File): Pair<Int, Int> {
+        if (ImageFileSupport.isAvifFile(imageFile.name)) {
+            val size = AvifBitmapDecoder.getSize(imageFile)
+            return (size?.width ?: 0) to (size?.height ?: 0)
+        }
         val options = BitmapFactory.Options().apply {
             inJustDecodeBounds = true
         }

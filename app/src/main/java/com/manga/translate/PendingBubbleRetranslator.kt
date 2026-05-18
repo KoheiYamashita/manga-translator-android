@@ -43,7 +43,11 @@ internal class PendingBubbleRetranslator(
             )
         }
 
-        val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath) ?: run {
+        val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
+            AvifBitmapDecoder.decode(imageFile)
+        } else {
+            BitmapFactory.decodeFile(imageFile.absolutePath)
+        } ?: run {
             AppLogger.log(logTag, "Refill skipped: failed to decode ${imageFile.name}")
             return@withContext null
         }

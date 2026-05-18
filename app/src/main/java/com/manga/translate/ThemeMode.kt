@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatDelegate
 enum class ThemeMode(
     val prefValue: String,
     val nightMode: Int,
-    @StringRes val labelRes: Int
+    @param:StringRes val labelRes: Int
 ) {
     FOLLOW_SYSTEM("system", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM, R.string.theme_follow_system),
     DARK("dark", AppCompatDelegate.MODE_NIGHT_YES, R.string.theme_dark),

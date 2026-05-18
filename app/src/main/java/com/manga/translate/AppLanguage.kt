@@ -5,7 +5,7 @@ import androidx.core.os.LocaleListCompat
 
 enum class AppLanguage(
     val prefValue: String,
-    @StringRes val labelRes: Int,
+    @param:StringRes val labelRes: Int,
     private val languageTags: String?
 ) {
     FOLLOW_SYSTEM("follow_system", R.string.language_follow_system, null),

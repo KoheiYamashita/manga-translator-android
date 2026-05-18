@@ -1,6 +1,5 @@
 package com.manga.translate
 
-import android.os.Build
 import java.io.File
 import java.util.Locale
 
@@ -9,9 +8,9 @@ object ImageFileSupport {
     private const val AVIF_EXTENSION = "avif"
     private const val PNG_EXTENSION = "png"
 
-    fun supportsAvifDecoding(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-    }
+    fun supportsAvifDecoding(): Boolean = true
+
+    fun isAvifFile(name: String): Boolean = extensionOf(name) == AVIF_EXTENSION
 
     fun isSupportedSourceImageFileName(name: String): Boolean {
         val extension = extensionOf(name) ?: return false

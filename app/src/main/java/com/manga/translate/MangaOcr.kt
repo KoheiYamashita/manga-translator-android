@@ -93,11 +93,11 @@ class MangaOcr(
                 val r = ((pixel shr 16) and 0xFF) * imageConfig.rescaleFactor
                 val g = ((pixel shr 8) and 0xFF) * imageConfig.rescaleFactor
                 val b = (pixel and 0xFF) * imageConfig.rescaleFactor
-                input[index] = ((r - imageConfig.mean[0]) / imageConfig.std[0]).toFloat()
+                input[index] = (r - imageConfig.mean[0]) / imageConfig.std[0]
                 input[index + imageConfig.width * imageConfig.height] =
-                    ((g - imageConfig.mean[1]) / imageConfig.std[1]).toFloat()
+                    (g - imageConfig.mean[1]) / imageConfig.std[1]
                 input[index + 2 * imageConfig.width * imageConfig.height] =
-                    ((b - imageConfig.mean[2]) / imageConfig.std[2]).toFloat()
+                    (b - imageConfig.mean[2]) / imageConfig.std[2]
                 index++
             }
         }

@@ -44,7 +44,11 @@ internal class ReadingEmptyBubbleCoordinator(
             TranslationLanguage.JA_TO_ZH
         }
         val glossary = glossaryStore.load(folder)
-        val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath) ?: return@withContext null
+        val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
+            AvifBitmapDecoder.decode(imageFile)
+        } else {
+            BitmapFactory.decodeFile(imageFile.absolutePath)
+        } ?: return@withContext null
 
         try {
             val candidates = ArrayList<OcrBubble>(targets.size)

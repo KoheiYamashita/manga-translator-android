@@ -612,7 +612,7 @@ internal class LibraryImportExportCoordinator(
                         if (exportDir == null) {
                             exportDirReady = false
                         } else {
-                            ensureNoMediaFile(exportDir!!)
+                            ensureNoMediaFile(exportDir)
                         }
                     } else if (exportFormat == ExportFormat.IMAGE_DIR) {
                         ensureNoMediaFile(appContext, folder.name)
@@ -898,7 +898,7 @@ internal class LibraryImportExportCoordinator(
             if (collectionDir == null) {
                 collectionDirReady = false
             } else {
-                ensureNoMediaFile(collectionDir!!)
+                ensureNoMediaFile(collectionDir)
             }
         } else {
             ensureNoMediaFile(context, collectionName)
@@ -919,9 +919,9 @@ internal class LibraryImportExportCoordinator(
                         semaphore.withPermit {
                             val renderer = BubbleRenderer(context)
                             val chapterExportDir = if (collectionDir != null) {
-                                val existing = collectionDir!!.findFile(chapter.name)
+                                val existing = collectionDir.findFile(chapter.name)
                                 when {
-                                    existing == null -> collectionDir!!.createDirectory(chapter.name)
+                                    existing == null -> collectionDir.createDirectory(chapter.name)
                                     existing.isDirectory -> existing
                                     else -> null
                                 }
