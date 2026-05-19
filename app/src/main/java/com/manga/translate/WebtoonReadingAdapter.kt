@@ -270,10 +270,7 @@ class WebtoonReadingAdapter(
             applyPlaceholder(imageFile)
             binding.readingPageImage.setImageDrawable(null)
             imageTransformController.setCurrentBitmap(null)
-            binding.root.doOnLayout {
-                if (boundPath != imageFile.absolutePath) return@doOnLayout
-                loadPage(imageFile)
-            }
+            loadPage(imageFile)
         }
 
         fun updatePresentation(
@@ -376,13 +373,13 @@ class WebtoonReadingAdapter(
                 }
                 val decoded = decodedDeferred.await()
                 val bitmap = decoded?.bitmap
-                val translation = if (hasCachedTranslation) {
-                    cachedTranslation
-                } else {
-                    translationDeferred?.await().also { translationCache[imagePath] = it }
-                }
                 if (boundPath != imagePath) return@launch
                 if (bitmap == null) {
+                    val translation = if (hasCachedTranslation) {
+                        cachedTranslation
+                    } else {
+                        translationDeferred?.await().also { translationCache[imagePath] = it }
+                    }
                     currentTranslation = translation
                     binding.readingPageImage.setImageDrawable(null)
                     binding.readingPageOverlay.visibility = View.GONE
@@ -392,16 +389,24 @@ class WebtoonReadingAdapter(
                 currentBitmap = bitmap
                 currentImageWidth = decoded.sourceWidth
                 currentImageHeight = decoded.sourceHeight
-                currentTranslation = normalizeTranslation(translation)
+                currentTranslation = null
                 updatePageHeightForImage(decoded.sourceWidth, decoded.sourceHeight)
                 binding.readingPageImage.setImageBitmap(bitmap)
-                binding.root.doOnLayout {
-                    if (boundPath != imagePath) return@doOnLayout
+                binding.root.post {
+                    if (boundPath != imagePath) return@post
                     imageTransformController.reset(bitmap, ReadingDisplayMode.FIT_WIDTH)
                     rememberedPageHeights[imagePath] = binding.readingPageImage.height
                     binding.readingPagePlaceholder.visibility = View.GONE
                     bindOverlay(bitmap, currentTranslation)
                 }
+                val translation = if (hasCachedTranslation) {
+                    cachedTranslation
+                } else {
+                    translationDeferred?.await().also { translationCache[imagePath] = it }
+                }
+                if (boundPath != imagePath) return@launch
+                currentTranslation = normalizeTranslation(translation)
+                bindOverlay(bitmap, currentTranslation)
             }
         }
 
@@ -424,6 +429,9 @@ class WebtoonReadingAdapter(
             binding.readingPageOverlay.onBubbleLongPress = null
             binding.readingPageOverlay.visibility = View.GONE
             binding.readingPagePlaceholder.visibility = View.VISIBLE
+            updateViewHeight(binding.root, ViewGroup.LayoutParams.WRAP_CONTENT)
+            updateViewHeight(binding.readingPageImage, ViewGroup.LayoutParams.WRAP_CONTENT)
+            updateViewHeight(binding.readingPageOverlay, ViewGroup.LayoutParams.MATCH_PARENT)
         }
 
         private fun applyPlaceholder(imageFile: File) {

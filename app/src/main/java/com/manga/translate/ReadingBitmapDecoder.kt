@@ -11,7 +11,9 @@ data class DecodedReadingBitmap(
 )
 
 object ReadingBitmapDecoder {
-    private const val DETAIL_MULTIPLIER = 2
+    private const val DETAIL_MULTIPLIER = 1
+    private const val MAX_LONG_EDGE = 4096
+    private const val MAX_TOTAL_PIXELS = 4_194_304 // ~4MP
 
     fun decode(imageFile: java.io.File, targetWidth: Int, targetHeight: Int): DecodedReadingBitmap? {
         if (ImageFileSupport.isAvifFile(imageFile.name)) {
@@ -62,6 +64,18 @@ object ReadingBitmapDecoder {
         while (
             sourceWidth / (sample * 2) >= targetWidth &&
             sourceHeight / (sample * 2) >= targetHeight
+        ) {
+            sample *= 2
+        }
+        while (
+            sourceWidth / (sample * 2) >= MAX_LONG_EDGE ||
+            sourceHeight / (sample * 2) >= MAX_LONG_EDGE
+        ) {
+            sample *= 2
+        }
+        while (
+            sourceWidth.toLong() * sourceHeight.toLong() / ((sample * 2).toLong() * (sample * 2).toLong())
+            > MAX_TOTAL_PIXELS
         ) {
             sample *= 2
         }
