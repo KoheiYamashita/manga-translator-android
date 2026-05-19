@@ -130,6 +130,22 @@ class BubbleTextRecognizer(
         }
     }
 
+    internal suspend fun recognizeRegion(
+        cropSource: BitmapCropSource,
+        rect: RectF,
+        language: TranslationLanguage,
+        useLocalOcr: Boolean,
+        logTag: String
+    ): String {
+        val clamped = PipelineBitmapDecoder.clampRect(rect, cropSource.width, cropSource.height) ?: return ""
+        val crop = cropSource.decodeRegion(clamped) ?: return ""
+        return try {
+            recognizeCrop(crop, language, useLocalOcr, logTag)
+        } finally {
+            crop.recycleSafely()
+        }
+    }
+
     suspend fun recognizeCrop(
         crop: Bitmap,
         language: TranslationLanguage,

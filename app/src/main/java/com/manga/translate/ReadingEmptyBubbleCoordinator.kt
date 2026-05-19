@@ -2,7 +2,6 @@ package com.manga.translate
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.BitmapFactory
 import android.graphics.RectF
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -44,13 +43,9 @@ internal class ReadingEmptyBubbleCoordinator(
             TranslationLanguage.JA_TO_ZH
         }
         val glossary = glossaryStore.load(folder)
-        val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
-            AvifBitmapDecoder.decode(imageFile)
-        } else {
-            BitmapFactory.decodeFile(imageFile.absolutePath)
-        } ?: return@withContext null
+        val cropSource = PipelineBitmapDecoder.openCropSource(imageFile) ?: return@withContext null
 
-        try {
+        cropSource.use {
             val candidates = ArrayList<OcrBubble>(targets.size)
             val removedIds = HashSet<Int>()
             if (!ocrSettings.useLocalOcr && !ocrSettings.isValid()) {
@@ -58,7 +53,7 @@ internal class ReadingEmptyBubbleCoordinator(
                 return@withContext null
             }
             for (bubble in targets) {
-                val text = ocrBubble(bitmap, bubble.rect, language, ocrSettings.useLocalOcr).trim()
+                val text = ocrBubble(cropSource, bubble.rect, language, ocrSettings.useLocalOcr).trim()
                 if (text.length <= 2) {
                     removedIds.add(bubble.id)
                 } else {
@@ -95,8 +90,6 @@ internal class ReadingEmptyBubbleCoordinator(
                 translationStore.save(imageFile, updated)
             }
             EmptyBubbleProcessOutcome(updated, translatedByLlm = true)
-        } finally {
-            bitmap.recycleSafely()
         }
     }
 
@@ -135,13 +128,13 @@ internal class ReadingEmptyBubbleCoordinator(
     }
 
     private suspend fun ocrBubble(
-        bitmap: android.graphics.Bitmap,
+        cropSource: BitmapCropSource,
         rect: RectF,
         language: TranslationLanguage,
         useLocalOcr: Boolean
     ): String {
         return bubbleTextRecognizer.recognizeRegion(
-            source = bitmap,
+            cropSource = cropSource,
             rect = rect,
             language = language,
             useLocalOcr = useLocalOcr,
