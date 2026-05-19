@@ -2,12 +2,7 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.RectF
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.get
-import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxJavaType
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtSession
@@ -110,46 +105,17 @@ class BubbleDetector(
     }
 
     private fun preprocess(bitmap: Bitmap, inputWidth: Int, inputHeight: Int): PreprocessResult {
-        val srcW = bitmap.width
-        val srcH = bitmap.height
-        val gain = min(inputWidth.toFloat() / srcW, inputHeight.toFloat() / srcH).coerceAtLeast(1e-6f)
-        val newW = (srcW * gain).toInt().coerceAtLeast(1)
-        val newH = (srcH * gain).toInt().coerceAtLeast(1)
-
-        val resized = bitmap.scale(newW, newH)
-        val padded = createBitmap(inputWidth, inputHeight)
-        val canvas = Canvas(padded)
-        canvas.drawColor(Color.rgb(114, 114, 114))
-        val padX = ((inputWidth - newW) / 2f).coerceAtLeast(0f)
-        val padY = ((inputHeight - newH) / 2f).coerceAtLeast(0f)
-        canvas.drawBitmap(resized, padX, padY, null)
-        if (resized !== bitmap) {
-            resized.recycle()
-        }
-
-        val inputBuffer = FloatArray(3 * inputWidth * inputHeight)
-        var offset = 0
-        for (y in 0 until inputHeight) {
-            for (x in 0 until inputWidth) {
-                val pixel = padded[x, y]
-                val r = ((pixel shr 16) and 0xFF) / 255f
-                val g = ((pixel shr 8) and 0xFF) / 255f
-                val b = (pixel and 0xFF) / 255f
-                inputBuffer[offset] = r
-                inputBuffer[offset + inputWidth * inputHeight] = g
-                inputBuffer[offset + 2 * inputWidth * inputHeight] = b
-                offset++
-            }
-        }
-        padded.recycle()
+        val letterboxed = OnnxImagePreprocessor.letterbox(bitmap, inputWidth, inputHeight)
+        val inputBuffer = OnnxImagePreprocessor.bitmapToRgbChwFloat(letterboxed.bitmap)
+        letterboxed.bitmap.recycle()
 
         return PreprocessResult(
             inputBuffer = inputBuffer,
-            gain = gain,
-            padX = padX,
-            padY = padY,
-            inputWidth = inputWidth,
-            inputHeight = inputHeight
+            gain = letterboxed.gain,
+            padX = letterboxed.padX,
+            padY = letterboxed.padY,
+            inputWidth = letterboxed.inputWidth,
+            inputHeight = letterboxed.inputHeight
         )
     }
 

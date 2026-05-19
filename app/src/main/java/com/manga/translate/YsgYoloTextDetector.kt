@@ -7,9 +7,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.get
-import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.TensorInfo
@@ -68,46 +65,25 @@ class YsgYoloTextDetector(
         bitmap: Bitmap,
         suppressionMasks: List<TextSuppressionMask>
     ): PreprocessResult {
-        val srcW = bitmap.width
-        val srcH = bitmap.height
-        val gain = min(inputWidth.toFloat() / srcW, inputHeight.toFloat() / srcH).coerceAtLeast(1e-6f)
-        val newW = (srcW * gain).toInt().coerceAtLeast(1)
-        val newH = (srcH * gain).toInt().coerceAtLeast(1)
-
-        val resized = bitmap.scale(newW, newH)
-        val padded = createBitmap(inputWidth, inputHeight)
-        val canvas = Canvas(padded)
-        canvas.drawColor(Color.rgb(114, 114, 114))
-        val padX = ((inputWidth - newW) / 2f).coerceAtLeast(0f)
-        val padY = ((inputHeight - newH) / 2f).coerceAtLeast(0f)
-        canvas.drawBitmap(resized, padX, padY, null)
-        applySuppressionMasks(canvas, suppressionMasks, bitmap.width, bitmap.height, gain, padX, padY)
-        if (resized !== bitmap) {
-            resized.recycle()
+        val letterboxed = OnnxImagePreprocessor.letterbox(bitmap, inputWidth, inputHeight) { canvas, gain, padX, padY ->
+            applySuppressionMasks(canvas, suppressionMasks, bitmap.width, bitmap.height, gain, padX, padY)
         }
-
-        val input = FloatArray(3 * inputWidth * inputHeight)
-        var offset = 0
-        for (y in 0 until inputHeight) {
-            for (x in 0 until inputWidth) {
-                val pixel = padded[x, y]
-                val r = ((pixel shr 16) and 0xFF) / 255f
-                val g = ((pixel shr 8) and 0xFF) / 255f
-                val b = (pixel and 0xFF) / 255f
-                input[offset] = r
-                input[offset + inputWidth * inputHeight] = g
-                input[offset + 2 * inputWidth * inputHeight] = b
-                offset++
-            }
-        }
-        padded.recycle()
+        val input = OnnxImagePreprocessor.bitmapToRgbChwFloat(letterboxed.bitmap)
+        letterboxed.bitmap.recycle()
 
         val tensor = OnnxTensor.createTensor(
             env,
             FloatBuffer.wrap(input),
             longArrayOf(1, 3, inputHeight.toLong(), inputWidth.toLong())
         )
-        return PreprocessResult(tensor, gain, padX, padY, inputWidth, inputHeight)
+        return PreprocessResult(
+            tensor,
+            letterboxed.gain,
+            letterboxed.padX,
+            letterboxed.padY,
+            letterboxed.inputWidth,
+            letterboxed.inputHeight
+        )
     }
 
     private fun applySuppressionMasks(
