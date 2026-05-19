@@ -3,6 +3,7 @@ package com.manga.translate
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
+import android.os.Build
 import android.graphics.Rect
 import android.graphics.RectF
 import androidx.core.graphics.scale
@@ -127,7 +128,7 @@ internal object PipelineBitmapDecoder {
     private class FileBitmapRegionCropSource(
         imageFile: File
     ) : BitmapCropSource {
-        private val decoder = BitmapRegionDecoder.newInstance(imageFile.absolutePath, false)
+        private val decoder = createBitmapRegionDecoder(imageFile)
         private val decodeLock = Any()
 
         override val width: Int = decoder.width
@@ -147,6 +148,16 @@ internal object PipelineBitmapDecoder {
 
         override fun close() {
             decoder.recycle()
+        }
+
+        private fun createBitmapRegionDecoder(imageFile: File): BitmapRegionDecoder {
+            val path = imageFile.absolutePath
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                BitmapRegionDecoder.newInstance(path)
+            } else {
+                @Suppress("DEPRECATION")
+                BitmapRegionDecoder.newInstance(path, false)
+            }
         }
     }
 
