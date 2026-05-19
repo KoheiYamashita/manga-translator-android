@@ -251,12 +251,10 @@ fun recognizeEnglishLines(
     if (lineRects.isEmpty()) return emptyList()
     val results = ArrayList<EnglishLine>(lineRects.size)
     for (rect in lineRects) {
-        withBitmapCrop(source, rect) { crop ->
-            val decoded = ocrEngine.recognizeWithScore(crop)
-            val text = decoded.text.trim()
-            if (decoded.score >= minLineScore && text.isNotBlank()) {
-                results.add(EnglishLine(rect, text))
-            }
+        val decoded = ocrEngine.recognizeWithScore(source, rect)
+        val text = decoded.text.trim()
+        if (decoded.score >= minLineScore && text.isNotBlank()) {
+            results.add(EnglishLine(rect, text))
         }
     }
     return results
@@ -271,12 +269,10 @@ fun recognizeKoreanLines(
     if (lineRects.isEmpty()) return emptyList()
     val results = ArrayList<EnglishLine>(lineRects.size)
     for (rect in lineRects) {
-        withBitmapCrop(source, rect) { crop ->
-            val decoded = ocrEngine.recognizeWithScore(crop)
-            val text = decoded.text.trim()
-            if (decoded.score >= minLineScore && text.isNotBlank()) {
-                results.add(EnglishLine(rect, text))
-            }
+        val decoded = ocrEngine.recognizeWithScore(source, rect)
+        val text = decoded.text.trim()
+        if (decoded.score >= minLineScore && text.isNotBlank()) {
+            results.add(EnglishLine(rect, text))
         }
     }
     return results

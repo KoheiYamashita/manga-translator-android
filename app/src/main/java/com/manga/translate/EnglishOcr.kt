@@ -2,6 +2,7 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.RectF
 import androidx.core.graphics.get
 import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxTensor
@@ -50,6 +51,24 @@ class EnglishOcr(
         }
     }
 
+    fun recognizeWithScore(source: Bitmap, rect: RectF): OcrResult {
+        val preprocessed = preprocess(source, rect)
+        preprocessed.use { tensor ->
+            session.run(mapOf(inputName to tensor)).use { outputs ->
+                val output = outputs[0]
+                val outputShape = (output.info as TensorInfo).shape
+                val decoded = ctcDecodeWithScore(output.value, outputShape)
+                if (settingsStore.loadModelIoLogging()) {
+                    AppLogger.log(
+                        "EnglishOcr",
+                        "Input rect (${rect.left.toInt()},${rect.top.toInt()},${rect.right.toInt()},${rect.bottom.toInt()}), output: ${decoded.text}"
+                    )
+                }
+                return decoded
+            }
+        }
+    }
+
     /**
      * 预处理图像
      * 参考Python脚本的preprocess_rec函数
@@ -90,6 +109,54 @@ class EnglishOcr(
             FloatBuffer.wrap(input),
             longArrayOf(1, 3, imgH.toLong(), imgW.toLong())
         )
+    }
+
+    private fun preprocess(source: Bitmap, rect: RectF): OnnxTensor {
+        val imgH = 48
+        val imgW = 320
+        val clamped = PipelineBitmapDecoder.clampRect(rect, source.width, source.height)
+            ?: return preprocess(source)
+        val cropWidth = clamped.width().coerceAtLeast(1f)
+        val cropHeight = clamped.height().coerceAtLeast(1f)
+        val ratio = cropWidth / cropHeight
+        val targetW = (imgH * ratio).toInt().coerceIn(1, imgW)
+
+        val input = FloatArray(3 * imgH * imgW)
+        for (y in 0 until imgH) {
+            val srcY = mapToSourceCoordinate(y, imgH, clamped.top, cropHeight, source.height)
+            for (x in 0 until targetW) {
+                val srcX = mapToSourceCoordinate(x, targetW, clamped.left, cropWidth, source.width)
+                val pixel = source[srcX, srcY]
+                val r = ((pixel shr 16) and 0xFF) / 255f
+                val g = ((pixel shr 8) and 0xFF) / 255f
+                val b = (pixel and 0xFF) / 255f
+                val bNorm = (b - 0.5f) / 0.5f
+                val gNorm = (g - 0.5f) / 0.5f
+                val rNorm = (r - 0.5f) / 0.5f
+                val base = y * imgW + x
+                input[base] = bNorm
+                input[base + imgH * imgW] = gNorm
+                input[base + 2 * imgH * imgW] = rNorm
+            }
+        }
+
+        return OnnxTensor.createTensor(
+            env,
+            FloatBuffer.wrap(input),
+            longArrayOf(1, 3, imgH.toLong(), imgW.toLong())
+        )
+    }
+
+    private fun mapToSourceCoordinate(
+        targetIndex: Int,
+        targetSize: Int,
+        sourceStart: Float,
+        sourceSize: Float,
+        sourceLimit: Int
+    ): Int {
+        val normalized = (targetIndex + 0.5f) / targetSize.toFloat()
+        val source = sourceStart + normalized * sourceSize
+        return source.toInt().coerceIn(0, sourceLimit - 1)
     }
 
     /**
