@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.get
@@ -45,12 +47,13 @@ class YsgYoloTextDetector(
 
     fun detect(
         bitmap: Bitmap,
+        suppressionMasks: List<TextSuppressionMask> = emptyList(),
         confThreshold: Float = DEFAULT_CONF_THRESHOLD,
         iouThreshold: Float = DEFAULT_NMS_IOU_THRESHOLD,
         allowedClassIds: Set<Int>? = null
     ): List<TextDetection> {
         if (bitmap.width <= 1 || bitmap.height <= 1) return emptyList()
-        val pre = preprocess(bitmap)
+        val pre = preprocess(bitmap, suppressionMasks)
         pre.tensor.use { tensor ->
             session.run(mapOf(inputName to tensor)).use { outputs ->
                 val output = outputs[0]
@@ -61,7 +64,10 @@ class YsgYoloTextDetector(
         }
     }
 
-    private fun preprocess(bitmap: Bitmap): PreprocessResult {
+    private fun preprocess(
+        bitmap: Bitmap,
+        suppressionMasks: List<TextSuppressionMask>
+    ): PreprocessResult {
         val srcW = bitmap.width
         val srcH = bitmap.height
         val gain = min(inputWidth.toFloat() / srcW, inputHeight.toFloat() / srcH).coerceAtLeast(1e-6f)
@@ -75,6 +81,7 @@ class YsgYoloTextDetector(
         val padX = ((inputWidth - newW) / 2f).coerceAtLeast(0f)
         val padY = ((inputHeight - newH) / 2f).coerceAtLeast(0f)
         canvas.drawBitmap(resized, padX, padY, null)
+        applySuppressionMasks(canvas, suppressionMasks, bitmap.width, bitmap.height, gain, padX, padY)
         if (resized !== bitmap) {
             resized.recycle()
         }
@@ -101,6 +108,64 @@ class YsgYoloTextDetector(
             longArrayOf(1, 3, inputHeight.toLong(), inputWidth.toLong())
         )
         return PreprocessResult(tensor, gain, padX, padY, inputWidth, inputHeight)
+    }
+
+    private fun applySuppressionMasks(
+        canvas: Canvas,
+        suppressionMasks: List<TextSuppressionMask>,
+        sourceWidth: Int,
+        sourceHeight: Int,
+        gain: Float,
+        padX: Float,
+        padY: Float
+    ) {
+        if (suppressionMasks.isEmpty() || sourceWidth <= 0 || sourceHeight <= 0) return
+        val paint = Paint().apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+        for (mask in suppressionMasks) {
+            when (mask) {
+                is TextSuppressionMask.Rect -> {
+                    val rect = RectF(
+                        mask.rect.left * gain + padX,
+                        mask.rect.top * gain + padY,
+                        mask.rect.right * gain + padX,
+                        mask.rect.bottom * gain + padY
+                    )
+                    canvas.drawRect(rect, paint)
+                }
+                is TextSuppressionMask.Contour -> {
+                    if (mask.contour.size < 6) continue
+                    canvas.drawPath(
+                        buildContourPath(mask.contour, sourceWidth.toFloat(), sourceHeight.toFloat(), gain, padX, padY),
+                        paint
+                    )
+                }
+            }
+        }
+    }
+
+    private fun buildContourPath(
+        contour: FloatArray,
+        sourceWidth: Float,
+        sourceHeight: Float,
+        gain: Float,
+        padX: Float,
+        padY: Float
+    ): Path {
+        val path = Path()
+        path.moveTo(contour[0] * sourceWidth * gain + padX, contour[1] * sourceHeight * gain + padY)
+        var i = 2
+        while (i + 1 < contour.size) {
+            path.lineTo(
+                contour[i] * sourceWidth * gain + padX,
+                contour[i + 1] * sourceHeight * gain + padY
+            )
+            i += 2
+        }
+        path.close()
+        return path
     }
 
     private fun parseRawDetections(

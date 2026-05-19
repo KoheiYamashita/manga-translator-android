@@ -12,9 +12,13 @@ class TextDetector(
 ) {
     private val detector = YsgYoloTextDetector(context, modelAssetName)
 
-    fun detect(bitmap: Bitmap): List<RectF> {
+    fun detect(
+        bitmap: Bitmap,
+        suppressionMasks: List<TextSuppressionMask> = emptyList()
+    ): List<RectF> {
         val detections = detector.detect(
             bitmap = bitmap,
+            suppressionMasks = suppressionMasks,
             confThreshold = YSG_CONF_THRESHOLD,
             iouThreshold = YSG_NMS_IOU_THRESHOLD
         )
@@ -52,4 +56,9 @@ class TextDetector(
         private const val OUTPUT_EXPAND_RATIO = 0.08f
         private const val OUTPUT_EXPAND_MIN = 1.0f
     }
+}
+
+sealed interface TextSuppressionMask {
+    data class Rect(val rect: RectF) : TextSuppressionMask
+    data class Contour(val contour: FloatArray) : TextSuppressionMask
 }

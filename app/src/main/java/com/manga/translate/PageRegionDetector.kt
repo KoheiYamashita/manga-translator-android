@@ -2,10 +2,6 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import kotlin.math.max
 import kotlin.math.min
@@ -68,16 +64,9 @@ internal class PageRegionDetector(
     ): List<RectF> {
         val textDetector = getTextDetector("PageRegionDetector") ?: return emptyList()
         val bubbleRects = detections.map { it.rect }
-        val masked = maskDetections(bitmap, detections)
-        return try {
-            val rawTextRects = textDetector.detect(masked)
-            val filtered = filterOverlapping(rawTextRects, bubbleRects, TEXT_IOU_THRESHOLD)
-            RectGeometryDeduplicator.mergeSupplementRects(filtered, bitmap.width, bitmap.height)
-        } finally {
-            if (masked !== bitmap) {
-                masked.recycleSafely()
-            }
-        }
+        val rawTextRects = textDetector.detect(bitmap, buildSuppressionMasks(detections, bitmap))
+        val filtered = filterOverlapping(rawTextRects, bubbleRects, TEXT_IOU_THRESHOLD)
+        return RectGeometryDeduplicator.mergeSupplementRects(filtered, bitmap.width, bitmap.height)
     }
 
     private fun buildRegions(
@@ -107,40 +96,21 @@ internal class PageRegionDetector(
         }
     }
 
-    private fun maskDetections(source: Bitmap, detections: List<BubbleDetection>): Bitmap {
-        if (detections.isEmpty()) return source
-        val copy = source.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(copy)
-        val paint = Paint().apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
-        }
-        for (det in detections) {
-            if (det.maskContour != null && det.maskContour.size >= 6) {
-                canvas.drawPath(
-                    buildContourPath(det.maskContour, source.width.toFloat(), source.height.toFloat()),
-                    paint
-                )
+    private fun buildSuppressionMasks(
+        detections: List<BubbleDetection>,
+        bitmap: Bitmap
+    ): List<TextSuppressionMask> {
+        if (detections.isEmpty()) return emptyList()
+        return detections.map { det ->
+            val contour = det.maskContour
+            if (contour != null && contour.size >= 6) {
+                TextSuppressionMask.Contour(contour)
             } else {
-                canvas.drawRect(
-                    padRect(det.rect, source.width, source.height, MASK_EXPAND_RATIO, MASK_EXPAND_MIN),
-                    paint
+                TextSuppressionMask.Rect(
+                    padRect(det.rect, bitmap.width, bitmap.height, MASK_EXPAND_RATIO, MASK_EXPAND_MIN)
                 )
             }
         }
-        return copy
-    }
-
-    private fun buildContourPath(contour: FloatArray, w: Float, h: Float): Path {
-        val path = Path()
-        path.moveTo(contour[0] * w, contour[1] * h)
-        var i = 2
-        while (i + 1 < contour.size) {
-            path.lineTo(contour[i] * w, contour[i + 1] * h)
-            i += 2
-        }
-        path.close()
-        return path
     }
 
     private fun padRect(rect: RectF, width: Int, height: Int, ratio: Float, minPad: Float): RectF {
