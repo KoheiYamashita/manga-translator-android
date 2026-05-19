@@ -1,7 +1,6 @@
 package com.manga.translate
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -43,26 +42,32 @@ internal class PendingBubbleRetranslator(
             )
         }
 
-        val bitmap = if (ImageFileSupport.isAvifFile(imageFile.name)) {
-            AvifBitmapDecoder.decode(imageFile)
-        } else {
-            BitmapFactory.decodeFile(imageFile.absolutePath)
-        } ?: run {
-            AppLogger.log(logTag, "Refill skipped: failed to decode ${imageFile.name}")
+        val cropSource = PipelineBitmapDecoder.openCropSource(imageFile) ?: run {
+            AppLogger.log(logTag, "Refill skipped: failed to open crop source for ${imageFile.name}")
             return@withContext null
         }
 
-        try {
+        cropSource.use {
             val candidates = ArrayList<OcrBubble>(targets.size)
             val removedIds = HashSet<Int>()
             for (bubble in targets) {
-                val text = bubbleTextRecognizer.recognizeRegion(
-                    source = bitmap,
-                    rect = bubble.rect,
-                    language = language,
-                    useLocalOcr = useLocalOcr,
-                    logTag = logTag
-                ).trim()
+                val clamped = PipelineBitmapDecoder.clampRect(bubble.rect, cropSource.width, cropSource.height)
+                    ?: continue
+                val crop = cropSource.decodeRegion(clamped)
+                val text = if (crop == null) {
+                    ""
+                } else {
+                    try {
+                        bubbleTextRecognizer.recognizeCrop(
+                            crop = crop,
+                            language = language,
+                            useLocalOcr = useLocalOcr,
+                            logTag = logTag
+                        ).trim()
+                    } finally {
+                        crop.recycleSafely()
+                    }
+                }
                 if (discardShortOcr && text.length <= 2) {
                     removedIds.add(bubble.id)
                 } else if (text.isNotBlank()) {
@@ -116,8 +121,6 @@ internal class PendingBubbleRetranslator(
                 metadata = baseTranslation.metadata.copy(status = PageTranslationStatus.UNKNOWN)
             )
             RefillOutcome(translation = updated, translatedByLlm = true, glossaryUsed = translated.glossaryUsed)
-        } finally {
-            bitmap.recycleSafely()
         }
     }
 

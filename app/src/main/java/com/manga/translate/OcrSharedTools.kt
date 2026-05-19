@@ -122,7 +122,7 @@ class BubbleTextRecognizer(
         useLocalOcr: Boolean,
         logTag: String
     ): String {
-        val crop = cropBitmap(source, rect) ?: return ""
+        val crop = cropBitmap(source, rect)?.let { PipelineBitmapDecoder.scaleDownIfNeeded(it) } ?: return ""
         return try {
             recognizeCrop(crop, language, useLocalOcr, logTag)
         } finally {
