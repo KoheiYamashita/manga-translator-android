@@ -2,7 +2,6 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.Base64
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -18,9 +17,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.URLEncoder
-import java.io.ByteArrayOutputStream
 import java.net.SocketTimeoutException
+import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -586,7 +584,8 @@ class LlmClient(
 
     private fun buildImageOcrPayload(ocrSettings: OcrApiSettings, image: Bitmap): JSONObject {
         val config = getPromptConfig(OCR_PROMPT_CONFIG_ASSET)
-        val imageBase64 = encodeBitmapToBase64(image)
+        val imageBase64 = ImageEncodingUtils.encodeBitmapToBase64(image)
+            ?: throw LlmRequestException("IMAGE_ENCODE_FAILED", "Failed to encode OCR image as JPEG")
         val userInstruction = config.userPromptPrefix.ifBlank { DEFAULT_OCR_USER_PROMPT }
         val userContent = JSONArray()
             .put(
@@ -815,12 +814,6 @@ class LlmClient(
         val normalized = settings.apiUrl.trim().lowercase()
         return normalized.startsWith("https://api.siliconflow.cn") ||
             normalized.startsWith("http://api.siliconflow.cn")
-    }
-
-    private fun encodeBitmapToBase64(image: Bitmap): String {
-        val buffer = ByteArrayOutputStream()
-        image.compress(Bitmap.CompressFormat.JPEG, 90, buffer)
-        return Base64.encodeToString(buffer.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun sanitizeModelIoForLog(content: String): String {
