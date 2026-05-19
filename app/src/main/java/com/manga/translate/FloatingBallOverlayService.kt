@@ -1644,7 +1644,7 @@ class FloatingBallOverlayService : Service() {
         private const val FLOAT_VL_PROMPT_ASSET = "prompts/vl_bubble_prompts.json"
         private const val FLOATING_TRANSLATE_RETRY_COUNT = 1
         private const val MODEL_RESPONSE_SILENT_RETRY_COUNT = 3
-        private const val MAX_FLOATING_TASK_CONCURRENCY = 16
+        private const val MAX_FLOATING_TASK_CONCURRENCY = 50
         private const val AUTO_CLOSE_SCREEN_CHECK_INTERVAL_MS = 900L
         private const val AUTO_CLOSE_CAPTURE_TIMEOUT_MS = 1200L
         private const val AUTO_CLOSE_REFERENCE_WIDTH = 180

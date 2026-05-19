@@ -1568,12 +1568,12 @@ class SettingsFragment : Fragment() {
                 val concurrencyInput =
                     dialogBinding.floatingVlTranslateConcurrencyInput.text?.toString()?.trim()
                 val ocrConcurrencyLimit = parseIntInput(concurrencyInput)
-                    ?.coerceIn(1, 16)
+                    ?.coerceIn(1, 50)
                     ?: currentSettings.ocrConcurrencyLimit
                 val aiApiConcurrencyInput =
                     dialogBinding.floatingAiApiConcurrencyInput.text?.toString()?.trim()
                 val aiApiConcurrencyLimit = parseIntInput(aiApiConcurrencyInput)
-                    ?.coerceIn(1, 16)
+                    ?.coerceIn(1, 50)
                     ?: currentSettings.aiApiConcurrencyLimit
                 settingsStore.saveFloatingTranslateApiSettings(
                     FloatingTranslateApiSettings(
@@ -1889,7 +1889,7 @@ class SettingsFragment : Fragment() {
         private const val OCR_TIMEOUT_MIN_SECONDS = 30
         private const val OCR_TIMEOUT_MAX_SECONDS = 1200
         private const val OCR_API_CONCURRENCY_MIN = 1
-        private const val OCR_API_CONCURRENCY_MAX = 16
+        private const val OCR_API_CONCURRENCY_MAX = 50
         private const val FLOATING_TIMEOUT_MIN_SECONDS = 30
         private const val FLOATING_TIMEOUT_MAX_SECONDS = 1200
     }

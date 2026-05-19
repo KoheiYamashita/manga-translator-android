@@ -1249,13 +1249,13 @@ class SettingsStore(context: Context) {
         private const val MAX_OCR_API_TIMEOUT_SECONDS = 1200
         private const val DEFAULT_OCR_API_CONCURRENCY = 1
         private const val MIN_OCR_API_CONCURRENCY = 1
-        private const val MAX_OCR_API_CONCURRENCY = 16
+        private const val MAX_OCR_API_CONCURRENCY = 50
         private const val DEFAULT_FLOATING_OCR_CONCURRENCY = 1
         private const val MIN_FLOATING_OCR_CONCURRENCY = 1
-        private const val MAX_FLOATING_OCR_CONCURRENCY = 16
+        private const val MAX_FLOATING_OCR_CONCURRENCY = 50
         private const val DEFAULT_FLOATING_AI_API_CONCURRENCY = 15
         private const val MIN_FLOATING_AI_API_CONCURRENCY = 1
-        private const val MAX_FLOATING_AI_API_CONCURRENCY = 16
+        private const val MAX_FLOATING_AI_API_CONCURRENCY = 50
         private val DEFAULT_FLOATING_SINGLE_TAP_ACTION = FloatingBallGestureAction.START_TRANSLATE
         private val DEFAULT_FLOATING_DOUBLE_TAP_ACTION = FloatingBallGestureAction.CLEAR_SCREEN
         private val DEFAULT_FLOATING_LONG_PRESS_ACTION = FloatingBallGestureAction.OPEN_MENU
