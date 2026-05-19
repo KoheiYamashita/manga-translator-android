@@ -395,7 +395,7 @@ class WebtoonReadingAdapter(
                 currentTranslation = normalizeTranslation(translation)
                 updatePageHeightForImage(decoded.sourceWidth, decoded.sourceHeight)
                 binding.readingPageImage.setImageBitmap(bitmap)
-                binding.readingPageImage.doOnLayout {
+                binding.root.doOnLayout {
                     if (boundPath != imagePath) return@doOnLayout
                     imageTransformController.reset(bitmap, ReadingDisplayMode.FIT_WIDTH)
                     rememberedPageHeights[imagePath] = binding.readingPageImage.height
@@ -480,6 +480,7 @@ class WebtoonReadingAdapter(
             val resolved = resolveOverlayTranslation(translation)
             val lockedForEdit = isLockedEditPage()
             updateOverlayDisplayRect(width, height)
+            binding.readingPageOverlay.setContentZoomScale(imageTransformController.currentContentZoomScale())
             binding.readingPageOverlay.setTranslations(resolved)
             binding.readingPageOverlay.setOffsets(if (lockedForEdit) lockedPageOffsets else emptyMap())
             binding.readingPageOverlay.setTouchPassthroughEnabled(!lockedForEdit)
