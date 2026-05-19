@@ -32,6 +32,7 @@ import com.manga.translate.databinding.FragmentReadingBinding
 import com.manga.translate.di.appContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -375,11 +376,15 @@ class ReadingFragment : Fragment() {
         val targetPath = imageFile.absolutePath
         val targetIndex = index
         viewLifecycleOwner.lifecycleScope.launch {
-            val decoded = loadBitmap(imageFile)
-            val bitmap = decoded?.bitmap
-            val translation = withContext(Dispatchers.IO) {
+            val decodedDeferred = async(Dispatchers.IO) {
+                loadBitmap(imageFile)
+            }
+            val translationDeferred = async(Dispatchers.IO) {
                 loadValidTranslationForCurrentFolder(imageFile)
             }
+            val decoded = decodedDeferred.await()
+            val bitmap = decoded?.bitmap
+            val translation = translationDeferred.await()
             val currentImages = readingSessionViewModel.images.value.orEmpty()
             val currentIndex = readingSessionViewModel.index.value ?: 0
             if (
