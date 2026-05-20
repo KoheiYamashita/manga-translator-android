@@ -424,6 +424,7 @@ internal class FolderTranslationCoordinator(
                         appContext.getString(R.string.translation_keepalive_title),
                         appContext.getString(R.string.translation_failed)
                     )
+                    ui.refreshImages(folder)
                 } catch (e: CancellationException) {
                     if (cancellationRequested.get()) {
                         AppLogger.log("Library", "Folder translation canceled: ${folder.name}")
@@ -663,6 +664,7 @@ internal class FolderTranslationCoordinator(
                         appContext.getString(R.string.translation_keepalive_title),
                         appContext.getString(R.string.translation_failed)
                     )
+                    ui.refreshImages(folder)
                 } catch (e: CancellationException) {
                     if (cancellationRequested.get()) {
                         AppLogger.log("Library", "Full-page translation canceled: ${folder.name}")
@@ -980,9 +982,16 @@ internal class FolderTranslationCoordinator(
                 async {
                     apiSemaphore.withPermit {
                         currentCoroutineContext().ensureActive()
-                        if (requestFailed.get()) return@withPermit
                         val image = prepared.image
+                        if (requestFailed.get()) {
+                            markPageAborted(folder, image, hasFailures, requestException)
+                            return@withPermit
+                        }
                         progressStore.update(folder, image.name, PageProgressStatus.PENDING)
+                        if (requestFailed.get()) {
+                            markPageAborted(folder, image, hasFailures, requestException)
+                            return@withPermit
+                        }
                         var failureMessage: String? = null
                         val execution = try {
                             if (useVlDirectTranslate) {
@@ -1001,8 +1010,8 @@ internal class FolderTranslationCoordinator(
                                 )
                             }
                         } catch (e: LlmRequestException) {
-                            requestFailed.set(true)
                             requestException.compareAndSet(null, e)
+                            requestFailed.set(true)
                             AppLogger.log("Library", "Translation aborted for ${image.name}", e)
                             failureMessage = e.message
                             null
@@ -1012,10 +1021,6 @@ internal class FolderTranslationCoordinator(
                             AppLogger.log("Library", "Translation failed for ${image.name}", e)
                             failureMessage = e.message
                             null
-                        }
-                        if (requestFailed.get()) {
-                            recordPageFailure(folder, image, failureMessage)
-                            return@withPermit
                         }
                         if (execution?.result != null) {
                             translationPipeline.saveResult(image, execution.result)
@@ -1036,7 +1041,11 @@ internal class FolderTranslationCoordinator(
                             translatedCount.incrementAndGet()
                         } else {
                             hasFailures.set(true)
-                            recordPageFailure(folder, image, failureMessage)
+                            recordPageFailure(
+                                folder,
+                                image,
+                                failureMessage ?: requestException.get()?.message
+                            )
                         }
                         onCountUpdated(translatedCount.get())
                     }
@@ -1085,8 +1094,15 @@ internal class FolderTranslationCoordinator(
                 async {
                     semaphore.withPermit {
                         currentCoroutineContext().ensureActive()
-                        if (requestFailed.get()) return@withPermit
+                        if (requestFailed.get()) {
+                            markPageAborted(folder, page.imageFile, hasFailures, requestException)
+                            return@withPermit
+                        }
                         progressStore.update(folder, page.imageFile.name, PageProgressStatus.PENDING)
+                        if (requestFailed.get()) {
+                            markPageAborted(folder, page.imageFile, hasFailures, requestException)
+                            return@withPermit
+                        }
                         var failureMessage: String? = null
                         val execution = try {
                             executeFullPageTranslation(
@@ -1099,8 +1115,8 @@ internal class FolderTranslationCoordinator(
                                 glossaryMutex = glossaryMutex
                             )
                         } catch (e: LlmRequestException) {
-                            requestFailed.set(true)
                             requestException.compareAndSet(null, e)
+                            requestFailed.set(true)
                             AppLogger.log("Library", "Full-page translation aborted for ${page.imageFile.name}", e)
                             failureMessage = e.message
                             null
@@ -1110,10 +1126,6 @@ internal class FolderTranslationCoordinator(
                             AppLogger.log("Library", "Full-page translation failed for ${page.imageFile.name}", e)
                             failureMessage = e.message
                             null
-                        }
-                        if (requestFailed.get()) {
-                            recordPageFailure(folder, page.imageFile, failureMessage)
-                            return@withPermit
                         }
                         if (execution?.result != null) {
                             translationPipeline.saveResult(page.imageFile, execution.result)
@@ -1133,7 +1145,11 @@ internal class FolderTranslationCoordinator(
                             translatedCount.incrementAndGet()
                         } else {
                             hasFailures.set(true)
-                            recordPageFailure(folder, page.imageFile, failureMessage)
+                            recordPageFailure(
+                                folder,
+                                page.imageFile,
+                                failureMessage ?: requestException.get()?.message
+                            )
                         }
                         onCountUpdated(translatedCount.get())
                     }
@@ -1166,6 +1182,16 @@ internal class FolderTranslationCoordinator(
         } catch (e: Exception) {
             AppLogger.log("Library", "Failed to record FAILED status for ${image.name}", e)
         }
+    }
+
+    private suspend fun markPageAborted(
+        folder: File,
+        image: File,
+        hasFailures: AtomicBoolean,
+        requestException: AtomicReference<LlmRequestException?>
+    ) {
+        hasFailures.set(true)
+        recordPageFailure(folder, image, requestException.get()?.message)
     }
 
     private suspend fun finalizeFolderProgress(folder: File, failed: Boolean) {
