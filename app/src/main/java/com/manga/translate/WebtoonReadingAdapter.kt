@@ -1,13 +1,14 @@
 package com.manga.translate
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.RectF
+import android.util.Size
 import android.view.MotionEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewConfiguration
-import androidx.core.view.doOnLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.manga.translate.databinding.ItemReadingWebtoonPageBinding
@@ -39,6 +40,7 @@ class WebtoonReadingAdapter(
     private companion object {
         const val PAYLOAD_PRESENTATION_ONLY = "presentation_only"
         const val PAYLOAD_TRANSLATION_ONLY = "translation_only"
+        const val PAYLOAD_PLACEHOLDER_ONLY = "placeholder_only"
         const val DEFAULT_PLACEHOLDER_HEIGHT_RATIO = 1.4f
     }
 
@@ -53,12 +55,14 @@ class WebtoonReadingAdapter(
         useHorizontalText = true
     )
     private val rememberedPageHeights = mutableMapOf<String, Int>()
+    private val sourceSizeCache = mutableMapOf<String, Size>()
     private val boundHolders = mutableMapOf<String, WebtoonPageViewHolder>()
     private val translationCache = mutableMapOf<String, TranslationResult?>()
     private var editModeEnabled = false
     private var lockedPagePath: String? = null
     private var lockedPageTranslation: TranslationResult? = null
     private var lockedPageOffsets: Map<Int, Pair<Float, Float>> = emptyMap()
+    private var sourceSizePrefetchJob: Job? = null
 
     var onLockedBubbleOffsetChanged: ((Int, Float, Float) -> Unit)? = null
     var onLockedBubbleRemove: ((Int) -> Unit)? = null
@@ -109,9 +113,11 @@ class WebtoonReadingAdapter(
         )
         items = images
         pruneTranslationCache(images)
+        pruneSourceSizeCache(images)
         this.verticalLayoutEnabled = verticalLayoutEnabled
         this.bubbleRenderSettings = bubbleRenderSettings
         diffResult.dispatchUpdatesTo(this)
+        prefetchSourceSizes(images)
     }
 
     fun updateEditSession(
@@ -164,6 +170,10 @@ class WebtoonReadingAdapter(
             holder.reloadTranslationOverlay()
             return
         }
+        if (payloads.contains(PAYLOAD_PLACEHOLDER_ONLY)) {
+            holder.refreshPlaceholderHeight()
+            return
+        }
         if (payloads.contains(PAYLOAD_PRESENTATION_ONLY)) {
             holder.updatePresentation(
                 verticalLayoutEnabled = verticalLayoutEnabled,
@@ -190,6 +200,54 @@ class WebtoonReadingAdapter(
         if (translationCache.isEmpty()) return
         val activePaths = images.mapTo(hashSetOf()) { it.absolutePath }
         translationCache.keys.retainAll(activePaths)
+    }
+
+    private fun pruneSourceSizeCache(images: List<File>) {
+        if (sourceSizeCache.isEmpty()) return
+        val activePaths = images.mapTo(hashSetOf()) { it.absolutePath }
+        sourceSizeCache.keys.retainAll(activePaths)
+    }
+
+    private fun prefetchSourceSizes(images: List<File>) {
+        sourceSizePrefetchJob?.cancel()
+        val uncached = images.filterNot { sourceSizeCache.containsKey(it.absolutePath) }
+        if (uncached.isEmpty()) return
+        sourceSizePrefetchJob = scope.launch {
+            for (imageFile in uncached) {
+                if (!items.any { it.absolutePath == imageFile.absolutePath }) {
+                    continue
+                }
+                val size = withContext(Dispatchers.IO) {
+                    readImageSize(imageFile)
+                } ?: continue
+                sourceSizeCache[imageFile.absolutePath] = size
+                val holder = boundHolders[imageFile.absolutePath]
+                if (holder != null) {
+                    holder.refreshPlaceholderHeight()
+                } else {
+                    val index = items.indexOfFirst { it.absolutePath == imageFile.absolutePath }
+                    if (index >= 0) {
+                        notifyItemChanged(index, PAYLOAD_PLACEHOLDER_ONLY)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun readImageSize(imageFile: File): Size? {
+        return if (ImageFileSupport.isAvifFile(imageFile.name)) {
+            AvifBitmapDecoder.getSize(imageFile)
+        } else {
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(imageFile.absolutePath, options)
+            if (options.outWidth > 0 && options.outHeight > 0) {
+                Size(options.outWidth, options.outHeight)
+            } else {
+                null
+            }
+        }
     }
 
     private fun refreshPath(path: String) {
@@ -438,16 +496,28 @@ class WebtoonReadingAdapter(
             showPlaceholder(imageFile.absolutePath)
         }
 
+        fun refreshPlaceholderHeight() {
+            val path = boundPath ?: return
+            if (currentBitmap != null) return
+            showPlaceholder(path)
+        }
+
         private fun showPlaceholder(path: String) {
-            val targetHeight = rememberedPageHeights[path] ?: estimatePlaceholderHeight()
+            val targetHeight = rememberedPageHeights[path]
+                ?: estimatePlaceholderHeight(path)
             updatePlaceholderHeight(targetHeight)
             binding.readingPagePlaceholder.visibility = View.VISIBLE
         }
 
-        private fun estimatePlaceholderHeight(): Int {
+        private fun estimatePlaceholderHeight(path: String): Int {
             val metrics = binding.root.resources.displayMetrics
             val width = binding.root.width.takeIf { it > 0 } ?: metrics.widthPixels
-            val estimated = (width * DEFAULT_PLACEHOLDER_HEIGHT_RATIO).toInt()
+            val estimated = sourceSizeCache[path]
+                ?.takeIf { it.width > 0 && it.height > 0 }
+                ?.let { size ->
+                    (width.toFloat() * size.height / size.width).roundToInt()
+                }
+                ?: (width * DEFAULT_PLACEHOLDER_HEIGHT_RATIO).toInt()
             val minHeight = (metrics.density * 240f).toInt()
             return estimated.coerceAtLeast(minHeight)
         }

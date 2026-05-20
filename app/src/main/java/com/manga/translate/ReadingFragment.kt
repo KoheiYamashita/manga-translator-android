@@ -76,6 +76,7 @@ class ReadingFragment : Fragment() {
     private var currentTranslation: TranslationResult? = null
     private var translationWatchJob: Job? = null
     private var webtoonTranslationWatchJob: Job? = null
+    private var webtoonTranslationWarmJob: Job? = null
     private var currentBitmap: Bitmap? = null
     private var currentImageWidth: Int = 0
     private var currentImageHeight: Int = 0
@@ -111,6 +112,7 @@ class ReadingFragment : Fragment() {
     private var pageTransitionGeneration: Int = 0
     private val pageTransitionInterpolator = FastOutSlowInInterpolator()
     private val incomingPageParallaxDp = 28f
+    private val webtoonTranslationWarmRadius = 2
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -190,6 +192,7 @@ class ReadingFragment : Fragment() {
                 if (!webtoonProgrammaticScroll) {
                     persistWebtoonProgress()
                 }
+                warmNearbyWebtoonTranslations()
             }
         })
         readingDisplayMode = settingsStore.loadReadingDisplayMode()
@@ -1130,6 +1133,7 @@ class ReadingFragment : Fragment() {
         if (folderReadingMode != FolderReadingMode.WEBTOON_SCROLL) return
         if (webtoonTranslationWatchJob?.isActive == true) return
         refreshVisibleWebtoonTranslations()
+        warmNearbyWebtoonTranslations()
         webtoonTranslationWatchJob = viewLifecycleOwner.lifecycleScope.launch {
             translationStore.updates.collect { path ->
                 if (!isAdded || _binding == null || folderReadingMode != FolderReadingMode.WEBTOON_SCROLL) {
@@ -1160,6 +1164,8 @@ class ReadingFragment : Fragment() {
     private fun stopWebtoonTranslationWatcher(clearCache: Boolean = true) {
         webtoonTranslationWatchJob?.cancel()
         webtoonTranslationWatchJob = null
+        webtoonTranslationWarmJob?.cancel()
+        webtoonTranslationWarmJob = null
     }
 
     private fun findWebtoonTouchHolder(
@@ -1263,6 +1269,34 @@ class ReadingFragment : Fragment() {
             useVlDirectTranslate = preferencesGateway.isVlDirectTranslateEnabled(folder),
             language = preferencesGateway.getTranslationLanguage(folder)
         )
+    }
+
+    private fun warmNearbyWebtoonTranslations() {
+        if (folderReadingMode != FolderReadingMode.WEBTOON_SCROLL) return
+        val images = readingSessionViewModel.images.value.orEmpty()
+        if (images.isEmpty()) return
+        val firstVisible = webtoonLayoutManager.findFirstVisibleItemPosition()
+        val lastVisible = webtoonLayoutManager.findLastVisibleItemPosition()
+        if (firstVisible == RecyclerView.NO_POSITION || lastVisible == RecyclerView.NO_POSITION) return
+        val start = (firstVisible - webtoonTranslationWarmRadius).coerceAtLeast(0)
+        val end = (lastVisible + webtoonTranslationWarmRadius).coerceAtMost(images.lastIndex)
+        val visibleStart = firstVisible.coerceAtLeast(0)
+        val visibleEnd = lastVisible.coerceAtMost(images.lastIndex)
+        val warmTargets = ArrayList<java.io.File>(end - start + 1)
+        for (index in start..end) {
+            if (index in visibleStart..visibleEnd) continue
+            warmTargets += images[index]
+        }
+        if (warmTargets.isEmpty()) return
+        webtoonTranslationWarmJob?.cancel()
+        webtoonTranslationWarmJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            for (imageFile in warmTargets) {
+                if (!isActive || folderReadingMode != FolderReadingMode.WEBTOON_SCROLL) {
+                    break
+                }
+                loadValidTranslationForCurrentFolder(imageFile)
+            }
+        }
     }
 
     private fun persistReadingProgress() {

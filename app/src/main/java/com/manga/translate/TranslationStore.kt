@@ -1,6 +1,7 @@
 package com.manga.translate
 
 import android.graphics.RectF
+import android.util.LruCache
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -9,16 +10,39 @@ import org.json.JSONObject
 import java.io.File
 
 class TranslationStore {
+    private data class CacheEntry(
+        val lastModified: Long,
+        val fileSize: Long,
+        val result: TranslationResult
+    )
+
     private val updatesFlow = MutableSharedFlow<String>(
         replay = 0,
         extraBufferCapacity = 64
     )
+    private val loadCache = object : LruCache<String, CacheEntry>(64) {}
 
     val updates: SharedFlow<String> = updatesFlow.asSharedFlow()
 
     fun load(imageFile: File, expectedMetadata: TranslationMetadata? = null): TranslationResult? {
         val jsonFile = translationFileFor(imageFile)
         if (!jsonFile.exists()) return null
+        val cacheKey = jsonFile.absolutePath
+        val cached = synchronized(loadCache) {
+            loadCache.get(cacheKey)?.takeIf {
+                it.lastModified == jsonFile.lastModified() && it.fileSize == jsonFile.length()
+            }
+        }
+        if (cached != null) {
+            val result = cached.result
+            return if (expectedMetadata != null &&
+                !isMetadataUsable(imageFile, result.metadata, expectedMetadata)
+            ) {
+                null
+            } else {
+                result
+            }
+        }
         return try {
             val json = JSONObject(jsonFile.readText())
             val metadata = parseMetadata(json.optJSONObject("metadata"))
@@ -94,11 +118,22 @@ class TranslationStore {
                 bubbles = bubbles,
                 metadata = metadata
             )
-            if (metadata.status == PageTranslationStatus.UNKNOWN) {
+            val result = if (metadata.status == PageTranslationStatus.UNKNOWN) {
                 baseResult.copy(metadata = metadata.copy(status = baseResult.deriveStatus()))
             } else {
                 baseResult
             }
+            synchronized(loadCache) {
+                loadCache.put(
+                    cacheKey,
+                    CacheEntry(
+                        lastModified = jsonFile.lastModified(),
+                        fileSize = jsonFile.length(),
+                        result = result
+                    )
+                )
+            }
+            result
         } catch (e: Exception) {
             AppLogger.log("TranslationStore", "Failed to load ${jsonFile.name}", e)
             null
@@ -156,6 +191,16 @@ class TranslationStore {
         if (!tmp.renameTo(jsonFile)) {
             jsonFile.writeText(tmp.readText())
             tmp.delete()
+        }
+        synchronized(loadCache) {
+            loadCache.put(
+                jsonFile.absolutePath,
+                CacheEntry(
+                    lastModified = jsonFile.lastModified(),
+                    fileSize = jsonFile.length(),
+                    result = result.copy(metadata = metadata.copy(status = persistedStatus))
+                )
+            )
         }
         updatesFlow.tryEmit(imageFile.absolutePath)
         return jsonFile
