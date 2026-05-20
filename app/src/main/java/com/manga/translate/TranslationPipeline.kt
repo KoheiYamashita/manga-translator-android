@@ -50,6 +50,25 @@ internal class TranslationPipeline(
             return@withContext null
         }
         val page = ocrImage(imageFile, forceOcr, language, onProgress) ?: return@withContext null
+        translateStandardPage(
+            page = page,
+            imageFile = imageFile,
+            glossary = glossary,
+            language = language,
+            providerContext = providerContext,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun translateStandardPage(
+        page: PageOcrResult,
+        imageFile: File,
+        glossary: MutableMap<String, String>,
+        language: TranslationLanguage = TranslationLanguage.JA_TO_ZH,
+        providerContext: PageTranslationProviderContext? = null,
+        onProgress: (String) -> Unit
+    ): TranslationResult? = withContext(Dispatchers.Default) {
+        val resolvedApiSettings = providerContext?.apiSettings
         val metadata = buildTranslationMetadata(
             imageFile = imageFile,
             language = language,

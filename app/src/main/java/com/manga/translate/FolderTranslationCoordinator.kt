@@ -77,6 +77,11 @@ internal class FolderTranslationCoordinator(
         val recoveredFromModelError: Boolean = false
     )
 
+    private data class PreparedStandardPage(
+        val image: File,
+        val ocrResult: PageOcrResult?
+    )
+
     private enum class ModelErrorAction {
         RETRY,
         SKIP
@@ -940,18 +945,43 @@ internal class FolderTranslationCoordinator(
         onCountUpdated: suspend (Int) -> Unit
     ): Boolean {
         val maxConcurrency = settingsStore.loadMaxConcurrency()
-        val semaphore = Semaphore(maxConcurrency)
+        val apiSemaphore = Semaphore(maxConcurrency)
         val translatedCount = AtomicInteger(0)
         val hasFailures = AtomicBoolean(false)
         val requestFailed = AtomicBoolean(false)
         val requestException = AtomicReference<LlmRequestException?>(null)
         val scheduler = WeightedTranslationProviderScheduler(settingsStore.loadMainTranslationProviderPool())
+        val preparedPages = ArrayList<PreparedStandardPage>(pages.size)
+
+        for (image in pages) {
+            currentCoroutineContext().ensureActive()
+            val prepared = try {
+                prepareStandardPageForTranslation(
+                    image = image,
+                    force = force,
+                    useVlDirectTranslate = useVlDirectTranslate,
+                    language = language
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.log("Library", "Prepare standard page failed for ${image.name}", e)
+                null
+            }
+            if (prepared == null) {
+                hasFailures.set(true)
+                recordPageFailure(folder, image, null)
+            } else {
+                preparedPages.add(prepared)
+            }
+        }
         supervisorScope {
-            val tasks = pages.map { image ->
+            val tasks = preparedPages.map { prepared ->
                 async {
-                    semaphore.withPermit {
+                    apiSemaphore.withPermit {
                         currentCoroutineContext().ensureActive()
                         if (requestFailed.get()) return@withPermit
+                        val image = prepared.image
                         progressStore.update(folder, image.name, PageProgressStatus.PENDING)
                         var failureMessage: String? = null
                         val execution = try {
@@ -961,6 +991,7 @@ internal class FolderTranslationCoordinator(
                                 executeStandardPageTranslation(
                                     folder = folder,
                                     image = image,
+                                    page = prepared.ocrResult,
                                     force = force,
                                     glossaryProcessingEnabled = glossaryProcessingEnabled,
                                     language = language,
@@ -1015,6 +1046,22 @@ internal class FolderTranslationCoordinator(
         }
         requestException.get()?.let { throw it }
         return hasFailures.get()
+    }
+
+    private suspend fun prepareStandardPageForTranslation(
+        image: File,
+        force: Boolean,
+        useVlDirectTranslate: Boolean,
+        language: TranslationLanguage
+    ): PreparedStandardPage? {
+        if (useVlDirectTranslate) {
+            return PreparedStandardPage(image = image, ocrResult = null)
+        }
+        if (!force && hasRefillablePartialTranslation(image)) {
+            return PreparedStandardPage(image = image, ocrResult = null)
+        }
+        val ocrResult = translationPipeline.ocrImage(image, force, language) { } ?: return null
+        return PreparedStandardPage(image = image, ocrResult = ocrResult)
     }
 
     private suspend fun executeConcurrentFullPages(
@@ -1135,6 +1182,7 @@ internal class FolderTranslationCoordinator(
     private suspend fun executeStandardPageTranslation(
         folder: File,
         image: File,
+        page: PageOcrResult?,
         force: Boolean,
         glossaryProcessingEnabled: Boolean,
         language: TranslationLanguage,
@@ -1158,15 +1206,17 @@ internal class FolderTranslationCoordinator(
                 glossaryProcessingEnabled = glossaryProcessingEnabled
             )?.let { return it }
         }
+        val resolvedPage = page ?: translationPipeline.ocrImage(image, force, language) { }
+            ?: return PageTranslationExecutionResult()
         var lastResponseException: LlmResponseException? = null
         var lastRequestException: LlmRequestException? = null
         orderedProviders.forEach { providerContext ->
             try {
                 val glossarySnapshot = glossaryMutex.withLock { LinkedHashMap(glossary) }
-                val result = translationPipeline.translateImage(
+                val result = translationPipeline.translateStandardPage(
+                    page = resolvedPage,
                     imageFile = image,
                     glossary = glossarySnapshot,
-                    forceOcr = force,
                     language = language,
                     providerContext = providerContext
                 ) { }
@@ -1221,13 +1271,20 @@ internal class FolderTranslationCoordinator(
                     PageTranslationExecutionResult(recoveredFromModelError = retried)
                 }
                 ModelErrorAction.SKIP -> {
-                    skipStandardImage(folder, image, force, language)
+                    skipStandardImage(folder, resolvedPage, language)
                     PageTranslationExecutionResult(recoveredFromModelError = true)
                 }
             }
         }
         lastRequestException?.let { throw it }
         return PageTranslationExecutionResult()
+    }
+
+    private fun hasRefillablePartialTranslation(image: File): Boolean {
+        if (pendingBubbleRetranslator == null) return false
+        val existing = translationPipeline.loadAnyTranslation(image) ?: return false
+        return existing.metadata.status == PageTranslationStatus.PARTIAL &&
+            existing.metadata.matchesSource(image)
     }
 
     private suspend fun executeFullPageTranslation(
@@ -1408,19 +1465,19 @@ internal class FolderTranslationCoordinator(
 
     private suspend fun skipStandardImage(
         folder: File,
-        image: File,
-        force: Boolean,
+        page: PageOcrResult,
         language: TranslationLanguage
     ) {
         val blank = translationPipeline.buildBlankTranslationResult(
-            imageFile = image,
-            forceOcr = force,
+            page = page,
+            mode = TranslationMetadata.MODE_STANDARD,
+            promptAsset = STANDARD_PROMPT_ASSET,
             language = language
-        ) ?: return
+        )
         val skipped = blank.copy(
             metadata = blank.metadata.copy(status = PageTranslationStatus.SKIPPED)
         )
-        translationPipeline.saveResult(image, skipped)
+        translationPipeline.saveResult(page.imageFile, skipped)
         withContext(Dispatchers.Main) {
             ui.refreshImages(folder)
         }
@@ -1438,10 +1495,19 @@ internal class FolderTranslationCoordinator(
     ): Boolean {
         val glossary = glossaryStore.load(folder).toMutableMap()
         val glossaryMutex = Mutex()
+        val page = try {
+            translationPipeline.ocrImage(image, force, language) { }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.log("Library", "Retry OCR failed for ${image.name}", e)
+            null
+        } ?: return false
         val execution = try {
             executeStandardPageTranslation(
                 folder = folder,
                 image = image,
+                page = page,
                 force = force,
                 glossaryProcessingEnabled = glossaryProcessingEnabled,
                 language = language,

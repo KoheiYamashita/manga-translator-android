@@ -29,7 +29,7 @@ internal object PipelineBitmapDecoder {
     private const val DETECTION_MAX_EDGE = 1920
     private const val OCR_CROP_MAX_EDGE = 2048
 
-    fun decodeForDetection(
+    suspend fun decodeForDetection(
         imageFile: File,
         maxEdge: Int = DETECTION_MAX_EDGE
     ): PipelineDetectionBitmap? {
@@ -58,17 +58,23 @@ internal object PipelineBitmapDecoder {
         val sourceHeight = bounds.outHeight
         if (sourceWidth <= 0 || sourceHeight <= 0) return null
         val sampleSize = calculateInSampleSizeForMaxEdge(sourceWidth, sourceHeight, maxEdge)
-        val bitmap = BitmapFactory.decodeFile(
-            imageFile.absolutePath,
-            BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-        ) ?: return null
+        val bitmap = ImageProcessingGuards.withDecodePermit(
+            width = sourceWidth,
+            height = sourceHeight,
+            tag = "PipelineDecoder"
+        ) {
+            BitmapFactory.decodeFile(
+                imageFile.absolutePath,
+                BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                }
+            )
+        } ?: return null
         return PipelineDetectionBitmap(bitmap, sourceWidth, sourceHeight)
     }
 
-    fun prepareDetectionBitmap(
+    suspend fun prepareDetectionBitmap(
         source: Bitmap,
         maxEdge: Int = DETECTION_MAX_EDGE
     ): PipelineDetectionBitmap {
@@ -79,7 +85,13 @@ internal object PipelineBitmapDecoder {
         val scale = maxEdge / maxSourceEdge.toFloat()
         val targetWidth = max(1, (source.width * scale).roundToInt())
         val targetHeight = max(1, (source.height * scale).roundToInt())
-        val scaled = source.scale(targetWidth, targetHeight)
+        val scaled = ImageProcessingGuards.withDecodePermit(
+            width = source.width,
+            height = source.height,
+            tag = "PipelineDecoder"
+        ) {
+            source.scale(targetWidth, targetHeight)
+        }
         return PipelineDetectionBitmap(
             bitmap = scaled,
             sourceWidth = source.width,
@@ -87,7 +99,7 @@ internal object PipelineBitmapDecoder {
         )
     }
 
-    fun openCropSource(imageFile: File): BitmapCropSource? {
+    suspend fun openCropSource(imageFile: File): BitmapCropSource? {
         return if (ImageFileSupport.isAvifFile(imageFile.name)) {
             AvifBitmapCropSource(imageFile)
         } else {
@@ -134,15 +146,21 @@ internal object PipelineBitmapDecoder {
         override val width: Int = decoder.width
         override val height: Int = decoder.height
 
-        override fun decodeRegion(rect: RectF, maxEdge: Int): Bitmap? {
+        override suspend fun decodeRegion(rect: RectF, maxEdge: Int): Bitmap? {
             val bounds = rect.toDecodeRect(width, height) ?: return null
             val sampleSize = calculateCropSampleSize(bounds.width(), bounds.height(), maxEdge)
             val options = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
-            return synchronized(decodeLock) {
-                runCatching { decoder.decodeRegion(bounds, options) }.getOrNull()
+            return ImageProcessingGuards.withDecodePermit(
+                width = bounds.width(),
+                height = bounds.height(),
+                tag = "PipelineDecoder"
+            ) {
+                synchronized(decodeLock) {
+                    runCatching { decoder.decodeRegion(bounds, options) }.getOrNull()
+                }
             }
         }
 
@@ -174,7 +192,7 @@ internal object PipelineBitmapDecoder {
             AvifBitmapDecoder.getSize(imageFile)?.height ?: 0
         }
 
-        override fun decodeRegion(rect: RectF, maxEdge: Int): Bitmap? {
+        override suspend fun decodeRegion(rect: RectF, maxEdge: Int): Bitmap? {
             val source = ensureBitmap() ?: return null
             val crop = cropBitmap(source, rect) ?: return null
             return scaleDownIfNeeded(crop, maxEdge)
@@ -185,20 +203,26 @@ internal object PipelineBitmapDecoder {
             bitmap = null
         }
 
-        private fun ensureBitmap(): Bitmap? {
+        private suspend fun ensureBitmap(): Bitmap? {
             if (bitmap != null && bitmap?.isRecycled == false) return bitmap
             bitmap = AvifBitmapDecoder.decode(imageFile)
             return bitmap
         }
     }
 
-    internal fun scaleDownIfNeeded(bitmap: Bitmap, maxEdge: Int = OCR_CROP_MAX_EDGE): Bitmap {
+    internal suspend fun scaleDownIfNeeded(bitmap: Bitmap, maxEdge: Int = OCR_CROP_MAX_EDGE): Bitmap {
         val longestEdge = max(bitmap.width, bitmap.height).coerceAtLeast(1)
         if (longestEdge <= maxEdge) return bitmap
         val scale = maxEdge / longestEdge.toFloat()
         val targetWidth = max(1, (bitmap.width * scale).roundToInt())
         val targetHeight = max(1, (bitmap.height * scale).roundToInt())
-        val scaled = bitmap.scale(targetWidth, targetHeight)
+        val scaled = ImageProcessingGuards.withDecodePermit(
+            width = bitmap.width,
+            height = bitmap.height,
+            tag = "PipelineDecoder"
+        ) {
+            bitmap.scale(targetWidth, targetHeight)
+        }
         if (scaled !== bitmap) {
             bitmap.recycleSafely()
         }
@@ -220,7 +244,7 @@ internal interface BitmapCropSource : Closeable {
     val width: Int
     val height: Int
 
-    fun decodeRegion(rect: RectF, maxEdge: Int = 2048): Bitmap?
+    suspend fun decodeRegion(rect: RectF, maxEdge: Int = 2048): Bitmap?
 }
 
 internal fun PageRegionDetectionResult.remapToSource(

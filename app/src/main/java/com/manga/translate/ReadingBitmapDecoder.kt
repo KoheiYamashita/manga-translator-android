@@ -15,7 +15,7 @@ object ReadingBitmapDecoder {
     private const val MAX_LONG_EDGE = 4096
     private const val MAX_TOTAL_PIXELS = 4_194_304 // ~4MP
 
-    fun decode(imageFile: java.io.File, targetWidth: Int, targetHeight: Int): DecodedReadingBitmap? {
+    suspend fun decode(imageFile: java.io.File, targetWidth: Int, targetHeight: Int): DecodedReadingBitmap? {
         if (ImageFileSupport.isAvifFile(imageFile.name)) {
             val safeWidth = targetWidth.coerceAtLeast(1) * DETAIL_MULTIPLIER
             val safeHeight = targetHeight.coerceAtLeast(1) * DETAIL_MULTIPLIER
@@ -46,7 +46,13 @@ object ReadingBitmapDecoder {
             inSampleSize = sampleSize
             inPreferredConfig = Bitmap.Config.RGB_565
         }
-        val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath, options) ?: return null
+        val bitmap = ImageProcessingGuards.withDecodePermit(
+            width = sourceWidth,
+            height = sourceHeight,
+            tag = "ReadingDecoder"
+        ) {
+            BitmapFactory.decodeFile(imageFile.absolutePath, options)
+        } ?: return null
         return DecodedReadingBitmap(
             bitmap = bitmap,
             sourceWidth = sourceWidth,

@@ -1193,7 +1193,7 @@ internal class LibraryImportExportCoordinator(
         }
     }
 
-    private fun renderImageToTempFileWithPrefix(
+    private suspend fun renderImageToTempFileWithPrefix(
         context: Context,
         imageFile: File,
         prefix: String,
@@ -1332,7 +1332,7 @@ internal class LibraryImportExportCoordinator(
         }
     }
 
-    private fun exportImageWithBubbles(
+    private suspend fun exportImageWithBubbles(
         context: Context,
         renderer: BubbleRenderer,
         imageFile: File,
@@ -1813,7 +1813,7 @@ internal class LibraryImportExportCoordinator(
         }
     }
 
-    private fun renderImageToTempFile(
+    private suspend fun renderImageToTempFile(
         context: Context,
         imageFile: File,
         verticalLayoutEnabled: Boolean,

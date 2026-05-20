@@ -39,12 +39,35 @@ class BubbleRenderer(context: Context) {
     private val bubbleBounds = RectF()
     private val textRect = RectF()
 
-    fun render(
+    suspend fun render(
         source: Bitmap,
         translation: TranslationResult,
         verticalLayoutEnabled: Boolean
     ): Bitmap {
-        val output = source.copy(Bitmap.Config.ARGB_8888, true)
+        return ImageProcessingGuards.withRenderPermit(
+            width = source.width,
+            height = source.height,
+            tag = "BubbleRenderer"
+        ) {
+            try {
+                renderInternal(source, translation, verticalLayoutEnabled)
+            } catch (e: OutOfMemoryError) {
+                AppLogger.log(
+                    "BubbleRenderer",
+                    "Render OOM for ${source.width}x${source.height}, bubbles=${translation.bubbles.size}",
+                    e
+                )
+                throw e
+            }
+        }
+    }
+
+    private fun renderInternal(
+        source: Bitmap,
+        translation: TranslationResult,
+        verticalLayoutEnabled: Boolean
+    ): Bitmap {
+        val output = ensureMutableArgbBitmap(source)
         val canvas = Canvas(output)
         val scaleX = if (translation.width > 0) {
             output.width.toFloat() / translation.width.toFloat()
@@ -74,6 +97,15 @@ class BubbleRenderer(context: Context) {
             drawBubble(canvas, text, bubblePath, verticalLayoutEnabled)
         }
         return output
+    }
+
+    private fun ensureMutableArgbBitmap(source: Bitmap): Bitmap {
+        return if (source.config == Bitmap.Config.ARGB_8888 && source.isMutable) {
+            source
+        } else {
+            source.copy(Bitmap.Config.ARGB_8888, true)
+                ?: throw OutOfMemoryError("Failed to allocate mutable ARGB_8888 bitmap copy")
+        }
     }
 
     private fun resolveBubbleShrinkPercent(bubble: BubbleTranslation): Int {
