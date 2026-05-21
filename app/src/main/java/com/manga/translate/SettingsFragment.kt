@@ -1046,7 +1046,8 @@ class SettingsFragment : Fragment() {
         val versionName = resolveVersionName()
         val dialogView = layoutInflater.inflate(R.layout.dialog_about, null)
         val messageView = dialogView.findViewById<TextView>(R.id.about_dialog_message)
-        messageView.text = getString(R.string.about_dialog_message, versionName)
+        val qqGroup = MainActivity.getLatestUpdateInfo()?.qqGroup
+        messageView.text = buildAboutDialogMessage(versionName, qqGroup)
         val dialog = AlertDialog.Builder(requireContext())
             .setTitle(R.string.about_dialog_title)
             .setView(dialogView)
@@ -1063,6 +1064,14 @@ class SettingsFragment : Fragment() {
             loadAndShowUpdateDialog()
         }
         dialog.show()
+    }
+
+    private fun buildAboutDialogMessage(versionName: String, qqGroup: String?): String {
+        return if (qqGroup.isNullOrBlank()) {
+            getString(R.string.about_dialog_message, versionName)
+        } else {
+            getString(R.string.about_dialog_message_with_group, versionName, qqGroup)
+        }
     }
 
     private fun loadAndShowUpdateDialog() {

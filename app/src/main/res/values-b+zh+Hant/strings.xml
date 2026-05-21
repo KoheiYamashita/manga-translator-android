@@ -491,8 +491,9 @@
     <!-- About / Crash / Permission -->
     <string name="about_button">關於軟體</string>
     <string name="about_dialog_title">關於</string>
-    <string name="about_dialog_message">目前版本：%1$s
-交流與回饋群：1080302768</string>
+    <string name="about_dialog_message">目前版本：%1$s</string>
+    <string name="about_dialog_message_with_group">目前版本：%1$s
+交流與回饋群：%2$s</string>
     <string name="about_open_project">開啟專案頁面</string>
     <string name="about_view_updates">查看更新</string>
     <string name="crash_dialog_title">檢測到上次異常退出</string>

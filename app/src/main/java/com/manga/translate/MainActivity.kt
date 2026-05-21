@@ -121,6 +121,7 @@ class MainActivity : AppCompatActivity() {
                 includePreview = updateIgnoreStore.loadAcceptPreviewUpdates()
             )
             if (updateInfo == null) return@launch
+            latestUpdateInfo = updateInfo
             AppLogger.log(
                 "UpdateChecker",
                 "Local version=${VersionInfo.VERSION_NAME} (${VersionInfo.VERSION_CODE}), " +
@@ -331,8 +332,12 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private var hasCheckedUpdate = false
+        @Volatile
+        private var latestUpdateInfo: UpdateInfo? = null
         private const val UPDATE_CHECK_DELAY_MS = 2_000L
         private const val PROJECT_URL = "https://github.com/jedzqer/manga-translator"
+
+        fun getLatestUpdateInfo(): UpdateInfo? = latestUpdateInfo
     }
 
     private fun isNewerVersion(updateInfo: UpdateInfo): Boolean {

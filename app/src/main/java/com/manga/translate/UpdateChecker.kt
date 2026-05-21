@@ -15,7 +15,8 @@ data class UpdateInfo(
     val apkUrl: String,
     val changelog: String,
     val history: List<UpdateHistoryEntry>,
-    val releaseChannel: ReleaseChannel
+    val releaseChannel: ReleaseChannel,
+    val qqGroup: String?
 )
 
 data class UpdateHistoryEntry(
@@ -161,6 +162,7 @@ object UpdateChecker {
         val apkUrl = json.optString("apkUrl").trim()
         val changelog = json.optString("changelog").trim()
         val releaseChannel = parseReleaseChannel(json.optString("releaseChannel"))
+        val qqGroup = json.optString("qqGroup").trim().ifBlank { null }
         if (versionName.isBlank() || apkUrl.isBlank()) return null
         return UpdateInfo(
             versionCode = versionCode,
@@ -168,7 +170,8 @@ object UpdateChecker {
             apkUrl = apkUrl,
             changelog = changelog,
             history = emptyList(),
-            releaseChannel = releaseChannel
+            releaseChannel = releaseChannel,
+            qqGroup = qqGroup
         )
     }
 
@@ -224,7 +227,8 @@ object UpdateChecker {
             apkUrl = latestStable.apkUrl,
             changelog = latestStable.changelog,
             history = emptyList(),
-            releaseChannel = latestStable.releaseChannel
+            releaseChannel = latestStable.releaseChannel,
+            qqGroup = latest.qqGroup
         )
     }
 

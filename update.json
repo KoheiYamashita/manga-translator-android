@@ -2,6 +2,7 @@
   "versionCode": 59,
   "versionName": "3.2.1",
   "releaseChannel": "stable",
+  "qqGroup": "1080302768",
   "releasedAt": "2026-05-18",
   "apkUrl": "https://github.com/jedzqer/manga-translator-android/releases/download/v3.2.1/app-release.apk",
   "changelog": "修复 AVIF 图片支持异常，减小软件包体积。",
