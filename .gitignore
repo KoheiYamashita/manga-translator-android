@@ -55,6 +55,7 @@ assets/models/ocr/*
 assets/models/detection/*
 !assets/models/ocr/en_PP-OCRv5_rec_mobile_infer.onnx
 !assets/models/detection/Multilingual_PP-OCRv3_det_infer.onnx
+!assets/models/detection/yolov8m_seg-speech-bubble.onnx
 archived_models/
 
 

@@ -1,6 +1,6 @@
 # Third-party notices
 
-This project bundles the following third-party OCR model assets.
+This project bundles the following third-party model assets.
 
 ## PaddleOCR English recognition model
 
@@ -18,5 +18,14 @@ This project bundles the following third-party OCR model assets.
 - Bundled ONNX source: https://github.com/Kazuhito00/PaddleOCRv3-ONNX-Sample/blob/main/ppocr_onnx/model/det_model/Multilingual_PP-OCRv3_det_infer.onnx
 - Original project: https://github.com/PaddlePaddle/PaddleOCR
 - License: Apache License 2.0
+
+## Comic speech bubble detection model
+
+- Bundled file: `assets/models/detection/yolov8m_seg-speech-bubble.onnx`
+- Upstream model: `ogkalu/comic-speech-bubble-detector-yolov8m`
+- Source/model card: https://huggingface.co/ogkalu/comic-speech-bubble-detector-yolov8m
+- Original file used for conversion: `comic-speech-bubble-detector.pt`
+- License: Apache License 2.0
+- Notes: The bundled ONNX file was exported from the upstream YOLOv8 PyTorch model for Android ONNX Runtime loading.
 
 The Apache License 2.0 text is included at `licenses/APACHE-2.0.txt`.

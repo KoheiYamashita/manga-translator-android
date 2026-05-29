@@ -75,8 +75,8 @@
 ```
 
 ### 模型与资源
-英文 OCR 与英文行检测模型已随仓库放入 `assets/`。其他模型文件需放入 `assets/` 对应子目录：
-- `models/detection/yolov8m_seg-speech-bubble.onnx`（气泡检测）
+英文 OCR・英文行検出・吹き出し検出モデルは `assets/` に同梱済みです。その他のモデルファイルは `assets/` の対応するサブディレクトリに配置してください：
+- `models/detection/yolov8m_seg-speech-bubble.onnx`（吹き出し検出、同梱済み）
 - `models/ocr/manga_ocr/encoder_model.onnx`、`models/ocr/manga_ocr/decoder_model.onnx`（日文 OCR：MangaOcr，可在设置中切换）
 - `models/ocr/manga_ocr/generation_config.json`、`models/ocr/manga_ocr/preprocessor_config.json`、`models/ocr/manga_ocr/tokenizer.json`、`models/ocr/manga_ocr/special_tokens_map.json`
 - `models/ocr/manga_ocr_mobile/encoder.tflite`、`models/ocr/manga_ocr_mobile/decoder.tflite` 及 tokenizer/config（当前默认日文 OCR：MangaOcr Mobile）

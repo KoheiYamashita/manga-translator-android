@@ -155,51 +155,43 @@ class BubbleDetector(
 
         val results = ArrayList<RawDetection>(n)
         if (shape[1] <= shape[2]) {
-            // channels-first layout: data[channel][anchor]
+            // channels-first layout: data[channel][anchor]. YOLOv8 detection models use
+            // 4 bbox channels followed by class scores, e.g. [1, 6, 8400] for 2 classes.
             if (data.any { it.size < n }) return emptyList()
-            if (!hasMaskCoeffs && c == 6) {
-                // Legacy detection format: cx, cy, w, h, conf, classId_int
-                for (i in 0 until n) {
-                    results.add(
-                        RawDetection(
-                            data[0][i], data[1][i], data[2][i], data[3][i],
-                            data[4][i], data[5][i].toInt()
-                        )
-                    )
+            val legacyFormat = !prefersClassScoreOutput() &&
+                !hasMaskCoeffs && c == 6 && looksLikeLegacyClassIdChannel(data[5])
+            for (i in 0 until n) {
+                val (classId, conf) = if (legacyFormat) {
+                    Pair(data[5][i].toInt(), data[4][i])
+                } else if (numClasses == 1) {
+                    Pair(0, data[4][i])
+                } else {
+                    bestClass(data, i, 4, 4 + numClasses)
                 }
-            } else {
-                for (i in 0 until n) {
-                    val (classId, conf) = if (numClasses == 1) {
-                        Pair(0, data[4][i])
-                    } else {
-                        bestClass(data, i, 4, 4 + numClasses)
-                    }
-                    val coeffs = if (hasMaskCoeffs) {
-                        FloatArray(nmask) { k -> data[4 + numClasses + k][i] }
-                    } else FloatArray(0)
-                    results.add(RawDetection(data[0][i], data[1][i], data[2][i], data[3][i], conf, classId, coeffs))
-                }
+                val coeffs = if (hasMaskCoeffs) {
+                    FloatArray(nmask) { k -> data[4 + numClasses + k][i] }
+                } else FloatArray(0)
+                results.add(RawDetection(data[0][i], data[1][i], data[2][i], data[3][i], conf, classId, coeffs))
             }
         } else {
             // anchors-first layout: data[anchor][channel]
             if (data.size < n) return emptyList()
+            val legacyFormat = !prefersClassScoreOutput() &&
+                !hasMaskCoeffs && c == 6 && looksLikeLegacyClassIdRows(data)
             for (i in 0 until n) {
                 val row = data[i]
                 if (row.size < 5) continue
-                if (!hasMaskCoeffs && row.size == 6) {
-                    // Legacy detection format
-                    results.add(RawDetection(row[0], row[1], row[2], row[3], row[4], row[5].toInt()))
+                val (classId, conf) = if (legacyFormat && row.size >= 6) {
+                    Pair(row[5].toInt(), row[4])
+                } else if (numClasses == 1) {
+                    Pair(0, row[4])
                 } else {
-                    val (classId, conf) = if (numClasses == 1) {
-                        Pair(0, row[4])
-                    } else {
-                        bestClassRow(row, 4, 4 + numClasses)
-                    }
-                    val coeffs = if (hasMaskCoeffs && row.size >= 4 + numClasses + nmask) {
-                        FloatArray(nmask) { k -> row[4 + numClasses + k] }
-                    } else FloatArray(0)
-                    results.add(RawDetection(row[0], row[1], row[2], row[3], conf, classId, coeffs))
+                    bestClassRow(row, 4, 4 + numClasses)
                 }
+                val coeffs = if (hasMaskCoeffs && row.size >= 4 + numClasses + nmask) {
+                    FloatArray(nmask) { k -> row[4 + numClasses + k] }
+                } else FloatArray(0)
+                results.add(RawDetection(row[0], row[1], row[2], row[3], conf, classId, coeffs))
             }
         }
         return results
@@ -216,6 +208,38 @@ class BubbleDetector(
             }
         }
         return Pair(bestId, best)
+    }
+
+    private fun prefersClassScoreOutput(): Boolean {
+        return modelAssetName.contains("yolo", ignoreCase = true)
+    }
+
+    private fun looksLikeLegacyClassIdChannel(values: FloatArray): Boolean {
+        val sampleSize = min(values.size, 256)
+        if (sampleSize == 0) return false
+        var integerLike = 0
+        for (i in 0 until sampleSize) {
+            val v = values[i]
+            if (v >= 0f && v <= 32f && kotlin.math.abs(v - v.toInt()) < 1e-4f) {
+                integerLike += 1
+            }
+        }
+        return integerLike == sampleSize
+    }
+
+    private fun looksLikeLegacyClassIdRows(rows: List<FloatArray>): Boolean {
+        val sampleSize = min(rows.size, 256)
+        if (sampleSize == 0) return false
+        var integerLike = 0
+        for (i in 0 until sampleSize) {
+            val row = rows[i]
+            if (row.size < 6) continue
+            val v = row[5]
+            if (v >= 0f && v <= 32f && kotlin.math.abs(v - v.toInt()) < 1e-4f) {
+                integerLike += 1
+            }
+        }
+        return integerLike == sampleSize
     }
 
     private fun bestClassRow(row: FloatArray, from: Int, until: Int): Pair<Int, Float> {
