@@ -31,11 +31,17 @@ open class SafeNestedScrollView @JvmOverloads constructor(
                 // First crash: disable scroll bars and request a fresh draw.
                 // Do NOT retry within the same frame — the scrollbar state hasn't
                 // been cleared yet, so a retry would crash again.
-                disableScrollBarsAfterCrash(e)
+                disableScrollBarsAfterCrash()
                 postInvalidate()
             }
             // Subsequent crashes (or the re-entrant retry): silently skip this frame.
         }
+    }
+
+    override fun onDrawForeground(canvas: Canvas) {
+        // Some Android/OEM builds can crash inside View.onDrawScrollBars()
+        // when the internal ScrollBarDrawable is null. SafeNestedScrollView never
+        // relies on framework scrollbars, so skip the foreground scrollbar path.
     }
 
     private fun isFrameworkScrollBarCrash(error: NullPointerException): Boolean {
@@ -43,12 +49,11 @@ open class SafeNestedScrollView @JvmOverloads constructor(
         return message.contains("ScrollBarDrawable", ignoreCase = true)
     }
 
-    private fun disableScrollBarsAfterCrash(error: NullPointerException) {
+    private fun disableScrollBarsAfterCrash() {
         scrollBarCrashOccurred = true
         AppLogger.log(
             "SafeNestedScrollView",
-            "Recovered from framework scrollbar crash by disabling scrollbars",
-            error
+            "Suppressed framework scrollbar crash and disabled scrollbars"
         )
         isVerticalScrollBarEnabled = false
         isHorizontalScrollBarEnabled = false
