@@ -75,15 +75,15 @@
 ```
 
 ### 模型与资源
-将以下模型文件放入 `assets/` 对应子目录：
+英文 OCR 与英文行检测模型已随仓库放入 `assets/`。其他模型文件需放入 `assets/` 对应子目录：
 - `models/detection/yolov8m_seg-speech-bubble.onnx`（气泡检测）
 - `models/ocr/manga_ocr/encoder_model.onnx`、`models/ocr/manga_ocr/decoder_model.onnx`（日文 OCR：MangaOcr，可在设置中切换）
 - `models/ocr/manga_ocr/generation_config.json`、`models/ocr/manga_ocr/preprocessor_config.json`、`models/ocr/manga_ocr/tokenizer.json`、`models/ocr/manga_ocr/special_tokens_map.json`
 - `models/ocr/manga_ocr_mobile/encoder.tflite`、`models/ocr/manga_ocr_mobile/decoder.tflite` 及 tokenizer/config（当前默认日文 OCR：MangaOcr Mobile）
-- `models/ocr/en_PP-OCRv5_rec_mobile_infer.onnx`（英文 OCR）
+- `models/ocr/en_PP-OCRv5_rec_mobile_infer.onnx`（英文 OCR，已内置）
 - `models/ocr/korean_PP-OCRv3_rec_infer.onnx`（韩文 OCR）
 - `models/text_detection/ysgyolo_1.2_OS1.0.onnx`（文本补检 + 文字蒙版）
-- `models/detection/Multilingual_PP-OCRv3_det_infer.onnx`（英文行检测）
+- `models/detection/Multilingual_PP-OCRv3_det_infer.onnx`（英文行检测，已内置）
 
 模型下载链接：
 - 气泡检测模型：https://huggingface.co/ogkalu/comic-speech-bubble-detector-yolov8m

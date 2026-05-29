@@ -48,7 +48,13 @@ lint-reports/
 Thumbs.db
 
 # Large model assets
-assets/models/
+assets/models/*
+!assets/models/ocr/
+!assets/models/detection/
+assets/models/ocr/*
+assets/models/detection/*
+!assets/models/ocr/en_PP-OCRv5_rec_mobile_infer.onnx
+!assets/models/detection/Multilingual_PP-OCRv3_det_infer.onnx
 archived_models/
 
 

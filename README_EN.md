@@ -73,15 +73,15 @@ Join the QQ group for questions and discussion: `1080302768`
 ```
 
 ### Models and Assets
-Place the following model files into the corresponding subdirectories under `assets/`:
+The English OCR and English line-detection models are bundled under `assets/`. Place the remaining model files into the corresponding subdirectories under `assets/`:
 - `models/detection/yolov8m_seg-speech-bubble.onnx` (speech bubble detection)
 - `models/ocr/manga_ocr/encoder_model.onnx`, `models/ocr/manga_ocr/decoder_model.onnx` (Japanese OCR: MangaOcr, switchable in Settings)
 - `models/ocr/manga_ocr/generation_config.json`, `models/ocr/manga_ocr/preprocessor_config.json`, `models/ocr/manga_ocr/tokenizer.json`, `models/ocr/manga_ocr/special_tokens_map.json`
 - `models/ocr/manga_ocr_mobile/encoder.tflite`, `models/ocr/manga_ocr_mobile/decoder.tflite` and tokenizer/config files (currently the default Japanese OCR: MangaOcr Mobile)
-- `models/ocr/en_PP-OCRv5_rec_mobile_infer.onnx` (English OCR)
+- `models/ocr/en_PP-OCRv5_rec_mobile_infer.onnx` (English OCR, bundled)
 - `models/ocr/korean_PP-OCRv3_rec_infer.onnx` (Korean OCR)
 - `models/text_detection/ysgyolo_1.2_OS1.0.onnx` (supplementary text detection + text masking)
-- `models/detection/Multilingual_PP-OCRv3_det_infer.onnx` (English line detection)
+- `models/detection/Multilingual_PP-OCRv3_det_infer.onnx` (English line detection, bundled)
 
 Model download links:
 - Speech bubble detection model: https://huggingface.co/ogkalu/comic-speech-bubble-detector-yolov8m
