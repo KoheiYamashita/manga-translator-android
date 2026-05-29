@@ -9,6 +9,7 @@ enum class AppLanguage(
     private val languageTags: String?
 ) {
     FOLLOW_SYSTEM("follow_system", R.string.language_follow_system, null),
+    JAPANESE("ja", R.string.language_japanese, "ja"),
     SIMPLIFIED_CHINESE("zh_hans", R.string.language_simplified_chinese, "zh-Hans"),
     TRADITIONAL_CHINESE("zh_hant", R.string.language_traditional_chinese, "zh-Hant");
 

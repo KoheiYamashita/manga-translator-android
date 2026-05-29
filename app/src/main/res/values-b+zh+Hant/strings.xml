@@ -1,4 +1,5 @@
 <resources>
+    <string name="app_name">MT 閱讀器</string>
     <!-- Global / Pipeline -->
     <string name="preview_image">檢測預覽</string>
     <string name="detecting_bubbles">氣泡檢測中…</string>
@@ -49,6 +50,7 @@
     <string name="language_follow_system">跟隨系統</string>
     <string name="language_simplified_chinese">簡體中文</string>
     <string name="language_traditional_chinese">繁體中文</string>
+    <string name="language_japanese">日語</string>
     <string name="reading_display_button">閱讀設定</string>
     <string name="reading_display_title">閱讀顯示</string>
     <string name="reading_display_format">閱讀顯示：%1$s</string>
@@ -419,6 +421,7 @@
     <string name="export_format_cbz_option">匯出為 CBZ</string>
     <string name="export_format_pdf_option">匯出為 PDF</string>
     <string name="export_path_hint_format">匯出路徑：%1$s</string>
+    <string name="export_selected_directory_fallback">所選目錄</string>
 
     <!-- Error Dialogs -->
     <string name="api_request_failed_title">API 呼叫失敗</string>
@@ -459,6 +462,8 @@
     <string name="reading_bubble_width_hint">寬%%</string>
     <string name="reading_bubble_height_hint">高%%</string>
     <string name="reading_add_bubble">新增氣泡</string>
+    <string name="reading_clear_bubbles">清空所有氣泡</string>
+    <string name="reading_clear_bubbles_done">已清空目前頁面上的所有氣泡</string>
     <string name="reading_empty_bubble_hint">留空則軟體會自動在對應區域識別文字。</string>
     <string name="reading_empty_bubble_translating">正在翻譯氣泡…</string>
     <string name="reading_empty_bubble_translated">氣泡翻譯完成</string>

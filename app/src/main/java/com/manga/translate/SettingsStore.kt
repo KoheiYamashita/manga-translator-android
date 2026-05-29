@@ -578,10 +578,10 @@ class SettingsStore(context: Context) {
     fun loadTranslationStyle(): String {
         val saved = prefs.getString(KEY_TRANSLATION_STYLE, null)
         if (!saved.isNullOrBlank()) return saved
-        return if (PromptAssetResolver.isTraditionalChinese(appContext)) {
-            DEFAULT_TRANSLATION_STYLE_HANT
-        } else {
-            DEFAULT_TRANSLATION_STYLE
+        return when {
+            PromptAssetResolver.isJapanese(appContext) -> DEFAULT_TRANSLATION_STYLE_JA
+            PromptAssetResolver.isTraditionalChinese(appContext) -> DEFAULT_TRANSLATION_STYLE_HANT
+            else -> DEFAULT_TRANSLATION_STYLE
         }
     }
 
@@ -1240,6 +1240,8 @@ class SettingsStore(context: Context) {
             "请以普通日漫翻译风格翻译，语言自然流畅，符合中文漫画阅读习惯。"
         private const val DEFAULT_TRANSLATION_STYLE_HANT =
             "請以普通日漫翻譯風格翻譯，語言自然流暢，符合中文漫畫閱讀習慣。"
+        private const val DEFAULT_TRANSLATION_STYLE_JA =
+            "一般的な日本漫画の翻訳スタイルで、中国語の漫画読者に自然に読める流暢な中国語へ翻訳してください。"
         private const val DEFAULT_API_URL = "https://api.siliconflow.cn/v1"
         private const val DEFAULT_MODEL = "Qwen/Qwen3.5-35B-A3B"
         private const val DEFAULT_OCR_API_URL = "https://api.siliconflow.cn/v1"

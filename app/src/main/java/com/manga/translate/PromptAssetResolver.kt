@@ -28,6 +28,11 @@ object PromptAssetResolver {
         return locale.country.uppercase(Locale.US) in TRADITIONAL_CHINESE_REGIONS
     }
 
+    fun isJapanese(context: Context): Boolean {
+        val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+        return locale.language.equals(Locale.JAPANESE.language, ignoreCase = true)
+    }
+
     private fun String.toTraditionalVariantName(): String {
         val dotIndex = lastIndexOf('.')
         if (dotIndex <= 0) return this

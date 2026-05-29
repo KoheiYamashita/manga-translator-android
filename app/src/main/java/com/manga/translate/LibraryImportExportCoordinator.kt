@@ -1263,7 +1263,7 @@ internal class LibraryImportExportCoordinator(
             } else {
                 id
             }
-        } ?: "所选目录"
+        } ?: appContext.getString(R.string.export_selected_directory_fallback)
         return base
     }
 
