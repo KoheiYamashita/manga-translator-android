@@ -392,6 +392,7 @@ internal class TranslationPipeline(
                     apiSettings = settingsStore.load(),
                     concurrency = floatingSettings.aiApiConcurrencyLimit,
                     maxConcurrency = 16,
+                    language = language,
                     useCache = false,
                     logTag = "Pipeline"
                 )
@@ -689,7 +690,8 @@ internal class TranslationPipeline(
                 TranslationLanguage.JA_TO_ZH -> when (ocrSettings.japaneseLocalOcrEngine) {
                     JapaneseLocalOcrEngine.MANGA_OCR_MOBILE -> "local_ja_mangaocr_mobile"
                 }
-                TranslationLanguage.EN_TO_ZH -> "local_en"
+                TranslationLanguage.EN_TO_ZH,
+                TranslationLanguage.EN_TO_JA -> "local_en"
                 TranslationLanguage.KO_TO_ZH -> "local_ko"
             }
         }

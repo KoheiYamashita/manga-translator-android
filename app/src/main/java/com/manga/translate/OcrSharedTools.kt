@@ -88,7 +88,8 @@ class BubbleTextRecognizer(
             ) {
                 JapaneseLocalOcrEngine.MANGA_OCR_MOBILE -> engineRegistry.getMangaOcrMobile(logTag)
             }
-            TranslationLanguage.EN_TO_ZH -> engineRegistry.getEnglishOcr(logTag)
+            TranslationLanguage.EN_TO_ZH,
+            TranslationLanguage.EN_TO_JA -> engineRegistry.getEnglishOcr(logTag)
             TranslationLanguage.KO_TO_ZH -> engineRegistry.getKoreanOcr(logTag)
         }
     }
@@ -101,7 +102,8 @@ class BubbleTextRecognizer(
         val lineDetector = engineRegistry.getEnglishLineDetector(logTag) ?: return emptyList()
         val lineRects = lineDetector.detectLines(source)
         return when (language) {
-            TranslationLanguage.EN_TO_ZH -> {
+            TranslationLanguage.EN_TO_ZH,
+            TranslationLanguage.EN_TO_JA -> {
                 val engine = engineRegistry.getEnglishOcr(logTag) ?: return emptyList()
                 recognizeEnglishLines(source, lineRects, engine)
             }
@@ -170,7 +172,8 @@ class BubbleTextRecognizer(
                 }
             }
 
-            TranslationLanguage.EN_TO_ZH -> {
+            TranslationLanguage.EN_TO_ZH,
+            TranslationLanguage.EN_TO_JA -> {
                 val engine = engineRegistry.getEnglishOcr(logTag) ?: return ""
                 val lineDetector = engineRegistry.getEnglishLineDetector(logTag)
                 val lineRects = lineDetector?.detectLines(crop).orEmpty()
@@ -205,7 +208,11 @@ data class EnglishLine(
 )
 
 fun normalizeOcrText(text: String, language: TranslationLanguage): String {
-    if (language != TranslationLanguage.EN_TO_ZH && language != TranslationLanguage.KO_TO_ZH) return text
+    if (
+        language != TranslationLanguage.EN_TO_ZH &&
+        language != TranslationLanguage.EN_TO_JA &&
+        language != TranslationLanguage.KO_TO_ZH
+    ) return text
     return text.replace('\r', ' ')
         .replace('\n', ' ')
         .replace(Regex("\\s+"), " ")

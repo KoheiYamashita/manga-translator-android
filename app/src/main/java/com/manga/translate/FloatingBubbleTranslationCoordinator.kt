@@ -128,11 +128,11 @@ internal class FloatingBubbleTranslationCoordinator(
         apiSettings: ApiSettings = settingsStore.loadResolvedFloatingTranslateApiSettings(),
         concurrency: Int,
         maxConcurrency: Int,
+        language: TranslationLanguage = settingsStore.loadFloatingTranslateApiSettings().language,
         useCache: Boolean = true,
         logTag: String = "FloatingOCR"
     ): FloatingBubbleImageTranslateOutcome = coroutineScope {
         val semaphore = Semaphore(concurrency.coerceIn(1, maxConcurrency))
-        val language = settingsStore.loadFloatingTranslateApiSettings().language
         val tasks = bubbles.map { bubble ->
             async(Dispatchers.IO) {
                 semaphore.withPermit {
@@ -169,7 +169,7 @@ internal class FloatingBubbleTranslationCoordinator(
                     val translatedText = try {
                         llmClient.translateImageBubble(
                             imageBase64 = requestImageBase64,
-                            promptAsset = promptAsset,
+                            promptAsset = language.resolvePromptAsset(promptAsset),
                             requestTimeoutMs = timeoutMs,
                             retryCount = retryCount,
                             apiSettings = apiSettings

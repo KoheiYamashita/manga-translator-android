@@ -340,6 +340,7 @@
     <string name="folder_language_to_zh">翻译成中文</string>
     <string name="folder_language_ja_to_zh">日文 → 中文</string>
     <string name="folder_language_en_to_zh">英文 → 中文</string>
+    <string name="folder_language_en_to_ja">英文 → 日文</string>
     <string name="folder_language_ko_to_zh">韩文 → 中文</string>
     <string name="folder_use_vl_direct_translate">使用 VL 模型翻译整个气泡</string>
     <string name="folder_use_vl_direct_translate_note">开启后会把检测到的气泡直接发给视觉模型翻译，跳过文字识别步骤。请确保所填模型支持图像输入。</string>

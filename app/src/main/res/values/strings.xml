@@ -340,6 +340,7 @@
     <string name="folder_language_to_zh">中国語に翻訳する</string>
     <string name="folder_language_ja_to_zh">日本語→中国語</string>
     <string name="folder_language_en_to_zh">英語 → 中国語</string>
+    <string name="folder_language_en_to_ja">英語 → 日本語</string>
     <string name="folder_language_ko_to_zh">韓国語 → 中国語</string>
     <string name="folder_use_vl_direct_translate">VLモデルで吹き出し全体を翻訳</string>
     <string name="folder_use_vl_direct_translate_note">オンにすると、検出された吹き出しは翻訳のためにビジュアル モデルに直接送信され、テキスト認識ステップがスキップされます。入力するモデルが画像入力をサポートしていることを確認してください。</string>

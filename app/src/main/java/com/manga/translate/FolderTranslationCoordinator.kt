@@ -571,7 +571,11 @@ internal class FolderTranslationCoordinator(
                         while (true) {
                             try {
                                 val extracted =
-                                    llmClient.extractGlossary(glossaryText, glossary, abstractPromptAsset)
+                                    llmClient.extractGlossary(
+                                        glossaryText,
+                                        glossary,
+                                        language.resolvePromptAsset(abstractPromptAsset)
+                                    )
                                 if (extracted != null) {
                                     if (extracted.isNotEmpty()) {
                                         for ((key, value) in extracted) {
@@ -804,7 +808,11 @@ internal class FolderTranslationCoordinator(
             val abstractPromptAsset = "prompts/llm_prompts_abstract.json"
             while (true) {
                 try {
-                    val extracted = llmClient.extractGlossary(glossaryText, glossary, abstractPromptAsset)
+                    val extracted = llmClient.extractGlossary(
+                        glossaryText,
+                        glossary,
+                        task.language.resolvePromptAsset(abstractPromptAsset)
+                    )
                     if (extracted != null) {
                         if (extracted.isNotEmpty()) {
                             for ((key, value) in extracted) {

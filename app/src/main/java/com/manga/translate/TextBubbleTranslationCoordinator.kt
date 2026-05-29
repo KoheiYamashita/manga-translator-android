@@ -59,7 +59,7 @@ internal class TextBubbleTranslationCoordinator(
         val translated = llmClient.translateBubbleItems(
             items = requestItems,
             glossary = glossary,
-            promptAsset = promptAsset,
+            promptAsset = language.resolvePromptAsset(promptAsset),
             requestTimeoutMs = requestTimeoutMs,
             retryCount = retryCount,
             apiSettings = resolvedApiSettings

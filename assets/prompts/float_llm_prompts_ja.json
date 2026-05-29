@@ -1,0 +1,30 @@
+{
+  "system_prompt": "You are a professional manga translator. Translate English manga bubble text into natural Japanese. Preserve tone and context. Output only the requested JSON; do not add explanations, comments, markdown code fences, or extra text.",
+  "user_prompt_prefix": "Translate the following English manga bubble text into Japanese. You must output valid JSON only, with no explanations, comments, markdown code fences, or extra text:\n\n",
+  "example_messages": [
+    {
+      "role": "user",
+      "content": "What JSON format should I use?"
+    },
+    {
+      "role": "assistant",
+      "content": "Use a JSON object with one top-level field: items. items is an array of bubbles, and each item must contain integer id and text fields."
+    },
+    {
+      "role": "user",
+      "content": "What should your response contain?"
+    },
+    {
+      "role": "assistant",
+      "content": "I will output only a JSON object with exactly one top-level field: items. Each returned item must contain the same id as the input and its translation. Every input id must appear exactly once."
+    },
+    {
+      "role": "user",
+      "content": "Translate this into Japanese using the agreed JSON format:\n\n{\n  \"items\": [\n    {\n      \"id\": 0,\n      \"text\": \"Get out of here!\"\n    },\n    {\n      \"id\": 1,\n      \"text\": \"Wait for me!\"\n    }\n  ]\n}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\n  \"items\": [\n    {\n      \"id\": 0,\n      \"translation\": \"出ていけ！\"\n    },\n    {\n      \"id\": 1,\n      \"translation\": \"待って！\"\n    }\n  ]\n}"
+    }
+  ]
+}
