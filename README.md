@@ -91,6 +91,7 @@
 - 韩文 OCR 模型：https://huggingface.co/breezedeus/cnocr-ppocr-korean_PP-OCRv3
 
 提示词、字体与 OCR 配置位于 `assets/` 子目录中，名称需与代码保持一致。
+第三方模型的许可证与出处见 `THIRD_PARTY_NOTICES.md`。
 
 ### 发布版本号同步
 需同时修改：

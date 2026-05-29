@@ -89,6 +89,7 @@ Model download links:
 - Korean OCR model: https://huggingface.co/breezedeus/cnocr-ppocr-korean_PP-OCRv3
 
 Prompts, fonts, and OCR configuration files are located in subdirectories under `assets/`, and their names must stay consistent with the code.
+See `THIRD_PARTY_NOTICES.md` for bundled third-party model sources and licenses.
 
 ### Release Version Sync
 Update all of the following files at the same time:
